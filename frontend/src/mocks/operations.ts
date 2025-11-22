@@ -138,11 +138,49 @@ export const mockOperations = {
     await new Promise((resolve) => setTimeout(resolve, 500))
     const index = mockOperationsData.findIndex((o) => o.id === id)
     if (index === -1) throw new Error('Operation not found')
-    mockOperationsData[index] = {
-      ...mockOperationsData[index],
-      ...data,
+    const existing = mockOperationsData[index]
+    
+    // Handle lineItems - if provided, map them to full OperationLineItem format
+    let lineItems = existing.lineItems
+    if (data.lineItems) {
+      lineItems = data.lineItems.map((item, idx) => {
+        // Find existing line item to preserve productName and productSku
+        const existingItem = existing.lineItems.find(li => li.productId === item.productId)
+        return {
+          id: existingItem?.id || String(idx + 1),
+          productId: item.productId,
+          productName: existingItem?.productName || 'Product Name',
+          productSku: existingItem?.productSku || 'SKU',
+          quantity: item.quantity,
+          uom: item.uom,
+          unitPrice: existingItem?.unitPrice,
+          totalPrice: existingItem?.totalPrice,
+        }
+      })
+    }
+    
+    const updated: Operation = {
+      ...existing,
+      ...(data.warehouseId !== undefined && { warehouseId: data.warehouseId }),
+      ...(data.sourceWarehouseId !== undefined && { sourceWarehouseId: data.sourceWarehouseId }),
+      ...(data.destinationWarehouseId !== undefined && { destinationWarehouseId: data.destinationWarehouseId }),
+      ...(data.supplierId !== undefined && { supplierId: data.supplierId }),
+      ...(data.customerId !== undefined && { customerId: data.customerId }),
+      ...(data.status !== undefined && { status: data.status }),
+      ...(data.notes !== undefined && { notes: data.notes }),
+      lineItems,
       updatedAt: new Date().toISOString(),
     }
+    
+    // Update validation info if status changed to READY or DONE
+    if (data.status === OperationStatus.READY || data.status === OperationStatus.DONE) {
+      if (!updated.validatedAt) {
+        updated.validatedAt = new Date().toISOString()
+        updated.validatedBy = '1' // Mock user ID
+      }
+    }
+    
+    mockOperationsData[index] = updated
     return mockOperationsData[index]
   },
 }

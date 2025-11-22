@@ -23,9 +23,9 @@
 
 4. **Access Application**
    - Open http://localhost:3000
-   - Login with:
-     - Email: `admin@stockmaster.com`
-     - Password: `password`
+   - Login with any user:
+     - **Managers:** `manager@stockmaster.com`, `manager2@stockmaster.com`, `manager3@stockmaster.com` / `password`
+     - **Staff:** `staff@stockmaster.com`, `staff2@stockmaster.com`, `staff3@stockmaster.com` / `staff123`
 
 ## Project Structure
 

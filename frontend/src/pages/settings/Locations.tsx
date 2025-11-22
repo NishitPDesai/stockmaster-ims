@@ -1,16 +1,20 @@
 import { useEffect, useState } from 'react'
 import { useAppSelector, useAppDispatch } from '@/store/hooks'
-import { fetchLocations, createLocation, updateLocation } from '@/store/slices/warehouseSlice'
+import { fetchLocations, createLocation, updateLocation, deleteLocation } from '@/store/slices/warehouseSlice'
 import { fetchWarehouses } from '@/store/slices/warehouseSlice'
 import { DataTable, Column } from '@/components/common/DataTable'
 import { Button } from '@/components/ui/button'
 import { Location } from '@/types'
-import { Plus } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { LocationForm } from '@/components/forms/LocationForm'
+import { hasPermission, canDelete, canAccessSettings } from '@/lib/permissions'
+import { Navigate } from 'react-router-dom'
+import { toast } from '@/lib/toast'
 
 export function Locations() {
   const dispatch = useAppDispatch()
   const { locations, warehouses, isLoading } = useAppSelector((state) => state.warehouses)
+  const user = useAppSelector((state) => state.auth.user)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null)
 
@@ -18,6 +22,15 @@ export function Locations() {
     dispatch(fetchWarehouses())
     dispatch(fetchLocations())
   }, [dispatch])
+
+  // Check if user can access settings
+  if (!canAccessSettings(user)) {
+    return <Navigate to="/dashboard" replace />
+  }
+
+  const canCreate = hasPermission(user, 'locations.create')
+  const canEdit = hasPermission(user, 'locations.edit')
+  const canDeleteLocations = canDelete(user, 'location')
 
   const columns: Column<Location>[] = [
     {
@@ -44,6 +57,23 @@ export function Locations() {
         </span>
       ),
     },
+    ...(canDeleteLocations ? [{
+      key: 'actions',
+      header: 'Actions',
+      cell: (row: Location) => (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={(e) => {
+            e.stopPropagation()
+            handleDelete(row.id)
+          }}
+          title="Delete"
+        >
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
+      ),
+    }] : []),
   ]
 
   const handleCreate = () => {
@@ -52,15 +82,22 @@ export function Locations() {
   }
 
   const handleEdit = (location: Location) => {
-    setSelectedLocation(location)
-    setIsFormOpen(true)
+    if (canEdit) {
+      setSelectedLocation(location)
+      setIsFormOpen(true)
+    }
   }
 
-  // const handleDelete = async (id: string) => {
-  //   if (window.confirm('Are you sure you want to delete this location?')) {
-  //     await dispatch(deleteLocation(id))
-  //   }
-  // }
+  const handleDelete = async (id: string) => {
+    if (canDeleteLocations && window.confirm('Are you sure you want to delete this location?')) {
+      try {
+        await dispatch(deleteLocation(id)).unwrap()
+        toast('Location deleted successfully', 'success')
+      } catch (error) {
+        toast('Failed to delete location', 'error')
+      }
+    }
+  }
 
   return (
     <div className="space-y-6 p-6">
@@ -69,10 +106,12 @@ export function Locations() {
           <h1 className="text-3xl font-bold">Locations</h1>
           <p className="text-muted-foreground">Manage warehouse locations</p>
         </div>
-        <Button onClick={handleCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Location
-        </Button>
+        {canCreate && (
+          <Button onClick={handleCreate}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Location
+          </Button>
+        )}
       </div>
 
       <DataTable
@@ -80,7 +119,7 @@ export function Locations() {
         data={locations}
         isLoading={isLoading}
         emptyMessage="No locations found"
-        onRowClick={handleEdit}
+        onRowClick={canEdit ? handleEdit : undefined}
       />
 
       {isFormOpen && (
@@ -92,13 +131,19 @@ export function Locations() {
             setSelectedLocation(null)
           }}
           onSave={async (data) => {
-            if (selectedLocation) {
-              await dispatch(updateLocation({ id: selectedLocation.id, data }))
-            } else {
-              await dispatch(createLocation(data))
+            try {
+              if (selectedLocation) {
+                await dispatch(updateLocation({ id: selectedLocation.id, data })).unwrap()
+                toast('Location updated successfully', 'success')
+              } else {
+                await dispatch(createLocation(data)).unwrap()
+                toast('Location created successfully', 'success')
+              }
+              setIsFormOpen(false)
+              setSelectedLocation(null)
+            } catch (error) {
+              toast('Failed to save location', 'error')
             }
-            setIsFormOpen(false)
-            setSelectedLocation(null)
           }}
         />
       )}

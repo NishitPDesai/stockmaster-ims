@@ -16,6 +16,7 @@ import { Warehouses } from './pages/settings/Warehouses'
 import { Locations } from './pages/settings/Locations'
 import { Profile } from './pages/Profile'
 import { ErrorBoundary } from './components/common/ErrorBoundary'
+import { ToastContainer } from './lib/toast'
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -148,6 +149,7 @@ function App() {
           />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
+        <ToastContainer />
       </BrowserRouter>
     </Provider>
     </ErrorBoundary>

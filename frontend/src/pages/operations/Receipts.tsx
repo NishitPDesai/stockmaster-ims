@@ -1,38 +1,93 @@
 import { useEffect, useState } from 'react'
 import { useAppSelector, useAppDispatch } from '@/store/hooks'
-import { fetchOperations, setFilters } from '@/store/slices/operationSlice'
+import { fetchOperations, setFilters, changeOperationStatus, setSelectedOperation, updateOperation } from '@/store/slices/operationSlice'
 import { fetchWarehouses } from '@/store/slices/warehouseSlice'
+import { fetchProducts } from '@/store/slices/productSlice'
 import { DataTable, Column } from '@/components/common/DataTable'
 import { FilterBar } from '@/components/common/FilterBar'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { Operation, DocumentType } from '@/types'
-import { Plus } from 'lucide-react'
+import { Plus, Download, Eye, Edit } from 'lucide-react'
 import { formatDateTime } from '@/lib/format'
 import { OperationForm } from '@/components/forms/OperationForm'
+import { OperationDetails } from '@/components/common/OperationDetails'
+import { exportToCSV } from '@/lib/export'
+import { hasPermission, canDelete } from '@/lib/permissions'
+import { OperationStatus } from '@/types/Status'
+import { toast } from '@/lib/toast'
 
 export function Receipts() {
   const dispatch = useAppDispatch()
-  const { items, isLoading, filters } = useAppSelector((state) => state.operations)
+  const { items, isLoading, filters, selectedOperation } = useAppSelector((state) => state.operations)
   const { warehouses } = useAppSelector((state) => state.warehouses)
+  const user = useAppSelector((state) => state.auth.user)
   const [isFormOpen, setIsFormOpen] = useState(false)
+  const [editingOperation, setEditingOperation] = useState<Operation | null>(null)
 
   useEffect(() => {
     try {
       dispatch(fetchWarehouses())
+      dispatch(fetchProducts())
       dispatch(fetchOperations({ documentType: DocumentType.RECEIPT }))
     } catch (error) {
       console.error('Error loading receipts:', error)
     }
   }, [dispatch])
 
+  const canCreate = hasPermission(user, 'operations.create')
+  const canEdit = hasPermission(user, 'operations.edit')
+  const canDeleteOps = canDelete(user, 'operation')
+
   const receipts = (items || []).filter((o) => o.documentType === DocumentType.RECEIPT)
+
+  const handleViewDetails = (operation: Operation) => {
+    dispatch(setSelectedOperation(operation))
+  }
+
+  const handleEdit = (operation: Operation) => {
+    if (operation.status === OperationStatus.DRAFT && canEdit) {
+      setEditingOperation(operation)
+      setIsFormOpen(true)
+    }
+  }
+
+  const handleStatusChange = async (id: string, status: OperationStatus) => {
+    try {
+      await dispatch(changeOperationStatus({ id, status })).unwrap()
+      await dispatch(fetchOperations({ documentType: DocumentType.RECEIPT }))
+      dispatch(setSelectedOperation(null))
+      toast(`Operation status changed to ${status}`, 'success')
+    } catch (error) {
+      toast('Failed to change operation status', 'error')
+    }
+  }
+
+  const handleExport = () => {
+    const exportData = receipts.map((r) => ({
+      'Document Number': r.documentNumber,
+      'Warehouse': r.warehouseName || '',
+      'Supplier': r.supplierName || '',
+      'Status': r.status,
+      'Created': formatDateTime(r.createdAt),
+      'Line Items': r.lineItems.length,
+    }))
+    exportToCSV(exportData, 'receipts')
+    toast('Receipts exported successfully', 'success')
+  }
 
   const columns: Column<Operation>[] = [
     {
       key: 'documentNumber',
       header: 'Document #',
-      cell: (row) => <span className="font-mono">{row.documentNumber}</span>,
+      cell: (row) => (
+        <button
+          onClick={() => handleViewDetails(row)}
+          className="font-mono text-primary hover:underline"
+        >
+          {row.documentNumber}
+        </button>
+      ),
     },
     {
       key: 'warehouse',
@@ -54,6 +109,32 @@ export function Receipts() {
       header: 'Created',
       cell: (row) => formatDateTime(row.createdAt),
     },
+    {
+      key: 'actions',
+      header: 'Actions',
+      cell: (row) => (
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => handleViewDetails(row)}
+            title="View Details"
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+          {row.status === OperationStatus.DRAFT && canEdit && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleEdit(row)}
+              title="Edit"
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      ),
+    },
   ]
 
   return (
@@ -63,10 +144,21 @@ export function Receipts() {
           <h1 className="text-3xl font-bold">Receipts</h1>
           <p className="text-muted-foreground">Manage incoming stock receipts</p>
         </div>
-        <Button onClick={() => setIsFormOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Receipt
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExport}>
+            <Download className="mr-2 h-4 w-4" />
+            Export
+          </Button>
+          {canCreate && (
+            <Button onClick={() => {
+              setEditingOperation(null)
+              setIsFormOpen(true)
+            }}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Receipt
+            </Button>
+          )}
+        </div>
       </div>
 
       <FilterBar
@@ -91,11 +183,31 @@ export function Receipts() {
         <OperationForm
           documentType={DocumentType.RECEIPT}
           warehouses={warehouses || []}
-          onClose={() => setIsFormOpen(false)}
-          onSave={async () => {
+          operation={editingOperation}
+          onClose={() => {
+            setIsFormOpen(false)
+            setEditingOperation(null)
+          }}
+          onSave={async (data) => {
+            if (editingOperation) {
+              await dispatch(updateOperation({ id: editingOperation.id, data })).unwrap()
+              toast('Receipt updated successfully', 'success')
+            } else {
+              await dispatch(fetchOperations({ documentType: DocumentType.RECEIPT }))
+              toast('Receipt created successfully', 'success')
+            }
             await dispatch(fetchOperations({ documentType: DocumentType.RECEIPT }))
             setIsFormOpen(false)
+            setEditingOperation(null)
           }}
+        />
+      )}
+
+      {selectedOperation && (
+        <OperationDetails
+          operation={selectedOperation}
+          onClose={() => dispatch(setSelectedOperation(null))}
+          onStatusChange={handleStatusChange}
         />
       )}
     </div>

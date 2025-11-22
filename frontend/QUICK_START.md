@@ -6,8 +6,17 @@ The development server is running at: **http://localhost:3000/**
 
 ## 🔐 Login Credentials (Mock Mode)
 
-- **Email:** `admin@stockmaster.com`
-- **Password:** `password`
+### Manager Accounts (Full Access)
+- **Manager 1:** `manager@stockmaster.com` / `password`
+- **Manager 2:** `manager2@stockmaster.com` / `password`
+- **Manager 3:** `manager3@stockmaster.com` / `password`
+
+### Staff Accounts (Limited Access)
+- **Staff 1:** `staff@stockmaster.com` / `staff123`
+- **Staff 2:** `staff2@stockmaster.com` / `staff123`
+- **Staff 3:** `staff3@stockmaster.com` / `staff123`
+
+**Note:** All managers have the same password (`password`) and all staff have the same password (`staff123`). In production, each user would have a unique password.
 
 ## 📋 What's Available (Static/Mock Data)
 
