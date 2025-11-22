@@ -2,43 +2,36 @@ import { Link, useLocation } from 'react-router-dom'
 import { 
   LayoutDashboard, 
   Package, 
-  Receipt, 
-  Truck, 
-  ArrowLeftRight, 
-  FileText, 
-  History, 
-  Warehouse,
-  MapPin,
+  History,
   Menu,
   X
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
 import { useAppSelector } from '@/store/hooks'
-import { canAccessSettings } from '@/lib/permissions'
+import { OperationsSubmenu } from './OperationsSubmenu'
+import { SettingsSubmenu } from './SettingsSubmenu'
 
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
   { icon: Package, label: 'Products', path: '/products' },
-  { icon: Receipt, label: 'Receipts', path: '/operations/receipts' },
-  { icon: Truck, label: 'Deliveries', path: '/operations/deliveries' },
-  { icon: ArrowLeftRight, label: 'Transfers', path: '/operations/transfers' },
-  { icon: FileText, label: 'Adjustments', path: '/operations/adjustments' },
-  { icon: History, label: 'Ledger', path: '/ledger' },
-]
-
-const settingsItems = [
-  { icon: Warehouse, label: 'Warehouses', path: '/settings/warehouses' },
-  { icon: MapPin, label: 'Locations', path: '/settings/locations' },
+  { icon: History, label: 'Move History', path: '/ledger' },
 ]
 
 export function Sidebar() {
   const location = useLocation()
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const user = useAppSelector((state) => state.auth.user)
-  const canAccessSettingsPage = canAccessSettings(user)
 
-  const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/')
+  const isActive = (path: string) => {
+    if (path === '/operations/receipts') {
+      return location.pathname.startsWith('/operations/')
+    }
+    if (path === '/settings/warehouses') {
+      return location.pathname.startsWith('/settings/')
+    }
+    return location.pathname === path || location.pathname.startsWith(path + '/')
+  }
 
   return (
     <>
@@ -51,71 +44,42 @@ export function Sidebar() {
         {isMobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </button>
 
-      {/* Sidebar */}
+      {/* Sidebar - Horizontal Navigation Tabs */}
       <aside
         className={cn(
-          "fixed left-0 top-0 h-full w-64 bg-card border-r z-40 transition-transform duration-300",
+          "fixed left-0 top-14 w-full bg-card border-b z-40 transition-transform duration-300",
           "lg:translate-x-0",
-          isMobileOpen ? "translate-x-0" : "-translate-x-full"
+          isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
-        <div className="flex flex-col h-full p-4">
-          <div className="mb-8 px-4 py-2">
-            <h1 className="text-2xl font-bold text-primary">StockMaster</h1>
-            <p className="text-xs text-muted-foreground">Inventory Management</p>
-          </div>
-
-          <nav className="flex-1 space-y-2">
-            <div className="space-y-1">
-              {menuItems.map((item) => {
-                const Icon = item.icon
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    onClick={() => setIsMobileOpen(false)}
-                    className={cn(
-                      "flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                      isActive(item.path)
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                    )}
-                  >
-                    <Icon className="h-5 w-5" />
-                    {item.label}
-                  </Link>
-                )
-              })}
-            </div>
-
-            {canAccessSettingsPage && (
-              <div className="pt-4 mt-4 border-t">
-                <p className="px-4 text-xs font-semibold text-muted-foreground uppercase mb-2">
-                  Settings
-                </p>
-                {settingsItems.map((item) => {
-                  const Icon = item.icon
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      onClick={() => setIsMobileOpen(false)}
-                      className={cn(
-                        "flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                        isActive(item.path)
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                      )}
-                    >
-                      <Icon className="h-5 w-5" />
-                      {item.label}
-                    </Link>
-                  )
-                })}
-              </div>
-            )}
-          </nav>
-        </div>
+        <nav className="flex items-center gap-1 px-4 lg:px-6 h-12 overflow-x-auto">
+          {menuItems.map((item) => {
+            const Icon = item.icon
+            const isItemActive = isActive(item.path)
+            const active = isItemActive
+            
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={() => setIsMobileOpen(false)}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap border-b-2 h-12",
+                  active
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted"
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {item.label}
+              </Link>
+            )
+          })}
+          {/* Operations submenu */}
+          <OperationsSubmenu />
+          {/* Settings submenu */}
+          <SettingsSubmenu />
+        </nav>
       </aside>
 
       {/* Mobile overlay */}

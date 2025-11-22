@@ -76,8 +76,7 @@ export function Ledger() {
   return (
     <div className="space-y-6 p-6">
       <div>
-        <h1 className="text-3xl font-bold">Movement Ledger</h1>
-        <p className="text-muted-foreground">Complete history of all stock movements</p>
+        <h1 className="text-3xl font-bold">Move History</h1>
       </div>
 
       <FilterBar

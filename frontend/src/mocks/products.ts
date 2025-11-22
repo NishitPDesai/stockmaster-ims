@@ -1,6 +1,6 @@
 import { Product, CreateProductDto, UpdateProductDto } from '@/types'
 
-const mockProductsData: Product[] = [
+export const mockProductsData: Product[] = [
   {
     id: '1',
     name: 'Laptop Computer',

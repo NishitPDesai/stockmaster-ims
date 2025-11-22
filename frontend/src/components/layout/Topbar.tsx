@@ -1,4 +1,4 @@
-import { User, Bell, LogOut, Settings } from 'lucide-react'
+import { User, LogOut, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -26,14 +26,11 @@ export function Topbar() {
   return (
     <header className="sticky top-0 z-30 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-14 items-center justify-between px-4 lg:px-6">
-        <div className="flex-1" />
+        <div className="flex items-center gap-4">
+          <h1 className="text-xl font-bold">StockMaster</h1>
+        </div>
 
         <div className="flex items-center gap-4">
-          {/* Notifications placeholder */}
-          <Button variant="ghost" size="icon" aria-label="Notifications">
-            <Bell className="h-5 w-5" />
-          </Button>
-
           {/* User menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

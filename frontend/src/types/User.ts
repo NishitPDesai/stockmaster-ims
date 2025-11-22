@@ -7,6 +7,12 @@ export interface User {
 }
 
 export interface LoginCredentials {
+  loginId: string
+  password: string
+}
+
+export interface RegisterCredentials {
+  loginId: string
   email: string
   password: string
 }

@@ -18,14 +18,21 @@ export interface Operation {
   documentNumber: string
   warehouseId?: string
   warehouseName?: string
+  warehouseCode?: string
   sourceWarehouseId?: string
   sourceWarehouseName?: string
+  sourceWarehouseCode?: string
   destinationWarehouseId?: string
   destinationWarehouseName?: string
+  destinationWarehouseCode?: string
   supplierId?: string
   supplierName?: string
   customerId?: string
   customerName?: string
+  responsible?: string
+  responsibleName?: string
+  scheduleDate?: string
+  deliveryAddress?: string
   lineItems: OperationLineItem[]
   notes?: string
   createdAt: string
@@ -42,6 +49,9 @@ export interface CreateOperationDto {
   destinationWarehouseId?: string
   supplierId?: string
   customerId?: string
+  responsible?: string
+  scheduleDate?: string
+  deliveryAddress?: string
   lineItems: Omit<OperationLineItem, 'id' | 'productName' | 'productSku'>[]
   notes?: string
 }
@@ -53,6 +63,9 @@ export interface UpdateOperationDto {
   destinationWarehouseId?: string
   supplierId?: string
   customerId?: string
+  responsible?: string
+  scheduleDate?: string
+  deliveryAddress?: string
   lineItems?: Omit<OperationLineItem, 'id' | 'productName' | 'productSku'>[]
   notes?: string
 }

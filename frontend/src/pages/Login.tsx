@@ -1,25 +1,19 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { useAppDispatch } from "@/store/hooks";
-import { login } from "@/store/slices/authSlice";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { useState } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import * as z from 'zod'
+import { useAppDispatch } from '@/store/hooks'
+import { login } from '@/store/slices/authSlice'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
+  loginId: z.string().min(1, 'Login Id is required'),
+  password: z.string().min(1, 'Password is required'),
+})
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
@@ -71,17 +65,17 @@ export function Login() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="loginId">Login Id</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="admin@stockmaster.com"
-                {...register("email")}
-                aria-invalid={errors.email ? "true" : "false"}
+                id="loginId"
+                type="text"
+                placeholder="Enter your login ID"
+                {...register('loginId')}
+                aria-invalid={errors.loginId ? 'true' : 'false'}
               />
-              {errors.email && (
+              {errors.loginId && (
                 <p className="text-sm text-red-600" role="alert">
-                  {errors.email.message}
+                  {errors.loginId.message}
                 </p>
               )}
             </div>
@@ -102,31 +96,21 @@ export function Login() {
               )}
             </div>
 
-            <div className="flex items-center justify-end">
-              <button
-                type="button"
-                className="text-sm text-primary hover:underline"
-                onClick={() => {
-                  /* Handle forgot password */
-                }}
-              >
-                Forgot password?
-              </button>
-            </div>
-
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Signing in..." : "Sign in"}
+              {isLoading ? 'Signing in...' : 'SIGN IN'}
             </Button>
 
             <div className="text-center text-sm">
-              <span className="text-muted-foreground">
-                Don't have an account?{" "}
-              </span>
-              <Link
-                to="/signup"
-                className="text-primary hover:underline font-medium"
+              <button
+                type="button"
+                className="text-primary hover:underline"
+                onClick={() => {/* Handle forgot password */}}
               >
-                Sign up
+                Forgot Password?
+              </button>
+              <span className="mx-2">|</span>
+              <Link to="/register" className="text-primary hover:underline">
+                Sign Up
               </Link>
             </div>
           </form>

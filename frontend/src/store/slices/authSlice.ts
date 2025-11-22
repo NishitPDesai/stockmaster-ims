@@ -1,13 +1,8 @@
-import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import { User, LoginCredentials, AuthResponse } from "@/types";
-import { apiClient, USE_MOCK } from "@/lib/api";
-import {
-  setStoredUser,
-  clearStoredAuth,
-  setAuthToken,
-  setRefreshToken,
-} from "@/lib/auth";
-import { mockAuth } from "@/mocks/auth";
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
+import { User, LoginCredentials, RegisterCredentials, AuthResponse } from '@/types'
+import { apiClient, USE_MOCK } from '@/lib/api'
+import { setStoredUser, clearStoredAuth, setAuthToken, setRefreshToken } from '@/lib/auth'
+import { mockAuth } from '@/mocks/auth'
 
 interface AuthState {
   user: User | null;
@@ -52,51 +47,31 @@ export const login = createAsyncThunk(
   }
 );
 
-export const signup = createAsyncThunk(
-  "auth/signup",
-  async (
-    data: { name: string; email: string; password: string },
-    { rejectWithValue }
-  ) => {
+export const register = createAsyncThunk(
+  'auth/register',
+  async (credentials: RegisterCredentials, { rejectWithValue }) => {
     try {
       if (USE_MOCK) {
-        // Mock signup - just create a user and log them in
-        const mockUser: User = {
-          id: Math.random().toString(),
-          name: data.name,
-          email: data.email,
-          role: "STAFF",
-        };
-        const mockToken = "mock-token-" + Math.random();
-        const mockRefreshToken = "mock-refresh-" + Math.random();
-
-        setStoredUser(mockUser);
-        setAuthToken(mockToken);
-        setRefreshToken(mockRefreshToken);
-
-        return {
-          user: mockUser,
-          token: mockToken,
-          refreshToken: mockRefreshToken,
-        };
+        const response = await mockAuth.register(credentials)
+        return response
       }
 
-      const response = await apiClient.post<AuthResponse>("/auth/signup", data);
-      const { user, token, refreshToken } = response.data;
+      const response = await apiClient.post<AuthResponse>('/auth/register', credentials)
+      const { user, token, refreshToken } = response.data
 
-      setStoredUser(user);
-      setAuthToken(token);
-      if (refreshToken) setRefreshToken(refreshToken);
+      setStoredUser(user)
+      setAuthToken(token)
+      setRefreshToken(refreshToken)
 
-      return { user, token, refreshToken };
+      return { user, token, refreshToken }
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || "Signup failed");
+      return rejectWithValue(error.response?.data?.message || 'Registration failed')
     }
   }
-);
+)
 
-export const logout = createAsyncThunk("auth/logout", async () => {
-  clearStoredAuth();
+export const logout = createAsyncThunk('auth/logout', async () => {
+  clearStoredAuth()
   if (!USE_MOCK) {
     try {
       await apiClient.post("/auth/logout");
@@ -147,23 +122,6 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Signup
-      .addCase(signup.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
-      .addCase(signup.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.user = action.payload.user;
-        state.token = action.payload.token;
-        state.isAuthenticated = true;
-        state.error = null;
-      })
-      .addCase(signup.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload as string;
-        state.isAuthenticated = false;
-      })
       // Login
       .addCase(login.pending, (state) => {
         state.isLoading = true;
@@ -180,6 +138,23 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload as string;
         state.isAuthenticated = false;
+      })
+      // Register
+      .addCase(register.pending, (state) => {
+        state.isLoading = true
+        state.error = null
+      })
+      .addCase(register.fulfilled, (state, action) => {
+        state.isLoading = false
+        state.user = action.payload.user
+        state.token = action.payload.token
+        state.isAuthenticated = true
+        state.error = null
+      })
+      .addCase(register.rejected, (state, action) => {
+        state.isLoading = false
+        state.error = action.payload as string
+        state.isAuthenticated = false
       })
       // Logout
       .addCase(logout.fulfilled, (state) => {
