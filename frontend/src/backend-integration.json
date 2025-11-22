@@ -1,0 +1,269 @@
+{
+  "version": "1.0.0",
+  "baseUrl": "http://localhost:5000/api",
+  "authentication": {
+    "type": "JWT",
+    "header": "Authorization",
+    "format": "Bearer {token}",
+    "endpoints": {
+      "login": {
+        "method": "POST",
+        "path": "/auth/login",
+        "request": {
+          "email": "string",
+          "password": "string"
+        },
+        "response": {
+          "user": {
+            "id": "string",
+            "email": "string",
+            "name": "string",
+            "role": "string"
+          },
+          "token": "string",
+          "refreshToken": "string"
+        }
+      },
+      "refresh": {
+        "method": "POST",
+        "path": "/auth/refresh",
+        "request": {
+          "refreshToken": "string"
+        },
+        "response": {
+          "user": "User",
+          "token": "string",
+          "refreshToken": "string"
+        }
+      },
+      "logout": {
+        "method": "POST",
+        "path": "/auth/logout"
+      }
+    }
+  },
+  "endpoints": {
+    "products": {
+      "list": {
+        "method": "GET",
+        "path": "/products",
+        "response": "Product[]"
+      },
+      "get": {
+        "method": "GET",
+        "path": "/products/:id",
+        "response": "Product"
+      },
+      "create": {
+        "method": "POST",
+        "path": "/products",
+        "request": "CreateProductDto",
+        "response": "Product"
+      },
+      "update": {
+        "method": "PATCH",
+        "path": "/products/:id",
+        "request": "UpdateProductDto",
+        "response": "Product"
+      },
+      "delete": {
+        "method": "DELETE",
+        "path": "/products/:id"
+      }
+    },
+    "operations": {
+      "list": {
+        "method": "GET",
+        "path": "/operations",
+        "queryParams": {
+          "documentType": "DocumentType",
+          "status": "OperationStatus",
+          "warehouseId": "string",
+          "category": "string",
+          "dateFrom": "string",
+          "dateTo": "string"
+        },
+        "response": "Operation[]"
+      },
+      "get": {
+        "method": "GET",
+        "path": "/operations/:id",
+        "response": "Operation"
+      },
+      "create": {
+        "method": "POST",
+        "path": "/operations",
+        "request": "CreateOperationDto",
+        "response": "Operation"
+      },
+      "update": {
+        "method": "PATCH",
+        "path": "/operations/:id",
+        "request": "UpdateOperationDto",
+        "response": "Operation"
+      }
+    },
+    "warehouses": {
+      "list": {
+        "method": "GET",
+        "path": "/warehouses",
+        "response": "Warehouse[]"
+      },
+      "create": {
+        "method": "POST",
+        "path": "/warehouses",
+        "request": "CreateWarehouseDto",
+        "response": "Warehouse"
+      },
+      "update": {
+        "method": "PATCH",
+        "path": "/warehouses/:id",
+        "request": "Partial<CreateWarehouseDto>",
+        "response": "Warehouse"
+      },
+      "delete": {
+        "method": "DELETE",
+        "path": "/warehouses/:id"
+      }
+    },
+    "locations": {
+      "list": {
+        "method": "GET",
+        "path": "/locations",
+        "queryParams": {
+          "warehouseId": "string"
+        },
+        "response": "Location[]"
+      },
+      "create": {
+        "method": "POST",
+        "path": "/locations",
+        "request": "CreateLocationDto",
+        "response": "Location"
+      },
+      "update": {
+        "method": "PATCH",
+        "path": "/locations/:id",
+        "request": "Partial<CreateLocationDto>",
+        "response": "Location"
+      },
+      "delete": {
+        "method": "DELETE",
+        "path": "/locations/:id"
+      }
+    },
+    "categories": {
+      "list": {
+        "method": "GET",
+        "path": "/categories",
+        "response": "ProductCategory[]"
+      }
+    },
+    "ledger": {
+      "list": {
+        "method": "GET",
+        "path": "/ledger",
+        "queryParams": {
+          "documentType": "DocumentType",
+          "status": "OperationStatus",
+          "warehouseId": "string",
+          "locationId": "string",
+          "productId": "string",
+          "category": "string",
+          "dateFrom": "string",
+          "dateTo": "string",
+          "movementType": "IN | OUT | TRANSFER"
+        },
+        "response": "MoveLog[]"
+      }
+    }
+  },
+  "types": {
+    "Product": {
+      "id": "string",
+      "name": "string",
+      "sku": "string",
+      "category": "string",
+      "uom": "string",
+      "initialStock": "number",
+      "stockPerWarehouse": "Record<string, number>",
+      "createdAt": "string (ISO 8601)",
+      "updatedAt": "string (ISO 8601)"
+    },
+    "Operation": {
+      "id": "string",
+      "documentType": "DocumentType",
+      "status": "OperationStatus",
+      "documentNumber": "string",
+      "warehouseId": "string?",
+      "sourceWarehouseId": "string?",
+      "destinationWarehouseId": "string?",
+      "supplierId": "string?",
+      "customerId": "string?",
+      "lineItems": "OperationLineItem[]",
+      "notes": "string?",
+      "createdAt": "string (ISO 8601)",
+      "updatedAt": "string (ISO 8601)",
+      "createdBy": "string",
+      "validatedAt": "string? (ISO 8601)",
+      "validatedBy": "string?"
+    },
+    "Warehouse": {
+      "id": "string",
+      "name": "string",
+      "code": "string",
+      "address": "string?",
+      "city": "string?",
+      "country": "string?",
+      "isActive": "boolean",
+      "createdAt": "string (ISO 8601)",
+      "updatedAt": "string (ISO 8601)"
+    },
+    "Location": {
+      "id": "string",
+      "warehouseId": "string",
+      "name": "string",
+      "code": "string",
+      "description": "string?",
+      "isActive": "boolean",
+      "createdAt": "string (ISO 8601)",
+      "updatedAt": "string (ISO 8601)"
+    },
+    "MoveLog": {
+      "id": "string",
+      "documentType": "DocumentType",
+      "documentId": "string",
+      "documentNumber": "string",
+      "productId": "string",
+      "productName": "string",
+      "productSku": "string",
+      "warehouseId": "string",
+      "warehouseName": "string",
+      "locationId": "string?",
+      "locationName": "string?",
+      "quantity": "number",
+      "quantityBefore": "number",
+      "quantityAfter": "number",
+      "movementType": "IN | OUT | TRANSFER",
+      "status": "OperationStatus",
+      "createdAt": "string (ISO 8601)",
+      "createdBy": "string"
+    },
+    "DocumentType": "RECEIPT | DELIVERY | TRANSFER | ADJUSTMENT",
+    "OperationStatus": "DRAFT | WAITING | READY | DONE | CANCELED"
+  },
+  "prisma": {
+    "note": "Backend should use Prisma with PostgreSQL",
+    "suggestedModels": [
+      "User",
+      "Product",
+      "ProductCategory",
+      "Warehouse",
+      "Location",
+      "Operation",
+      "OperationLineItem",
+      "MoveLog"
+    ]
+  }
+}
+
