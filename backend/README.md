@@ -42,12 +42,14 @@ backend/
 ## Setup
 
 1. **Install dependencies**:
+
    ```bash
    cd backend
    npm install
    ```
 
 2. **Configure environment** (create `.env` from `.env.example`):
+
    ```env
    DATABASE_URL=postgresql://user:password@localhost:5432/stockmaster
    PORT=5000
@@ -57,12 +59,14 @@ backend/
    ```
 
 3. **Run Prisma migrations**:
+
    ```bash
    npx prisma generate
    npx prisma migrate dev --name init
    ```
 
 4. **Start development server**:
+
    ```bash
    npm run dev
    ```
@@ -72,12 +76,14 @@ backend/
 ## API Endpoints
 
 ### Authentication
+
 - `POST /api/auth/signup` - Register a new user
 - `POST /api/auth/login` - Login (sets JWT cookie)
 - `POST /api/auth/logout` - Logout (clears cookie)
 - `GET /api/auth/me` - Get current user
 
 ### Products
+
 - `GET /api/products` - List products (filters: search, category, warehouseId, locationId, lowStockOnly)
 - `GET /api/products/:id` - Get product by ID
 - `POST /api/products` - Create product (requires MANAGER)
@@ -86,6 +92,7 @@ backend/
 - `GET /api/products/:id/stock` - Get stock by location for a product
 
 ### Warehouses
+
 - `GET /api/warehouses` - List warehouses
 - `GET /api/warehouses/:id` - Get warehouse by ID
 - `POST /api/warehouses` - Create warehouse (requires MANAGER)
@@ -93,6 +100,7 @@ backend/
 - `DELETE /api/warehouses/:id` - Soft delete warehouse (requires MANAGER)
 
 ### Locations
+
 - `GET /api/locations` - List locations (filter: warehouseId)
 - `GET /api/locations/:id` - Get location by ID
 - `POST /api/locations` - Create location (requires MANAGER)
@@ -100,11 +108,13 @@ backend/
 - `DELETE /api/locations/:id` - Soft delete location (requires MANAGER)
 
 ### Categories
+
 - `GET /api/categories` - List all product categories
 
 ### Operations
 
 #### Receipts (Incoming Stock)
+
 - `GET /api/operations/receipts` - List receipts
 - `GET /api/operations/receipts/:id` - Get receipt details
 - `POST /api/operations/receipts` - Create receipt
@@ -112,6 +122,7 @@ backend/
 - `POST /api/operations/receipts/:id/validate` - Validate receipt (increases stock)
 
 #### Deliveries (Outgoing Stock)
+
 - `GET /api/operations/deliveries` - List deliveries
 - `GET /api/operations/deliveries/:id` - Get delivery details
 - `POST /api/operations/deliveries` - Create delivery
@@ -119,6 +130,7 @@ backend/
 - `POST /api/operations/deliveries/:id/validate` - Validate delivery (decreases stock)
 
 #### Internal Transfers
+
 - `GET /api/operations/transfers` - List transfers
 - `GET /api/operations/transfers/:id` - Get transfer details
 - `POST /api/operations/transfers` - Create transfer
@@ -126,6 +138,7 @@ backend/
 - `POST /api/operations/transfers/:id/validate` - Validate transfer (moves stock between locations)
 
 #### Inventory Adjustments
+
 - `GET /api/operations/adjustments` - List adjustments
 - `GET /api/operations/adjustments/:id` - Get adjustment details
 - `POST /api/operations/adjustments` - Create adjustment (requires MANAGER)
@@ -133,22 +146,28 @@ backend/
 - `POST /api/operations/adjustments/:id/validate` - Validate adjustment (adjusts stock to counted quantity)
 
 ### Ledger
+
 - `GET /api/ledger` - List stock move history (filters: productId, warehouseId, locationId, moveType, status, dateFrom, dateTo)
 
 ### Dashboard
+
 - `GET /api/dashboard` - Get aggregated KPIs (filters: warehouseId, locationId, category)
   Returns: `totalProducts`, `productsInStock`, `lowStockItems`, `outOfStockItems`, `pendingReceipts`, `pendingDeliveries`, `pendingTransfers`
 
 ## Stock Management Logic
 
 ### Receipt Validation
+
 When a receipt is validated:
+
 1. For each line, the `receivedQty` (or `orderedQty`) is added to `StockQuant` at the target location
 2. A `StockMove` entry is created with `moveType: RECEIPT`
 3. Receipt status is updated to `DONE`
 
 ### Delivery Validation
+
 When a delivery is validated:
+
 1. Stock availability is checked for each line
 2. If sufficient stock exists, quantity is reduced from the source location
 3. A `StockMove` entry is created with `moveType: DELIVERY`
@@ -156,14 +175,18 @@ When a delivery is validated:
 5. If insufficient stock, validation fails with an error
 
 ### Internal Transfer Validation
+
 When an internal transfer is validated:
+
 1. Stock availability is checked at the source location
 2. Stock is reduced from source location and increased at destination location
 3. A `StockMove` entry is created with `moveType: INTERNAL`
 4. Transfer status is updated to `DONE`
 
 ### Inventory Adjustment Validation
+
 When an adjustment is validated:
+
 1. The difference between `countedQty` and `previousQty` is calculated
 2. `StockQuant` is updated to the counted quantity
 3. A `StockMove` entry is created with `moveType: ADJUSTMENT`
@@ -179,13 +202,13 @@ All stock operations use database transactions to ensure consistency.
 
 ## Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | - |
-| `PORT` | Server port | `5000` |
-| `JWT_SECRET` | Secret key for JWT signing | - |
-| `COOKIE_NAME` | Name of auth cookie | `sm_auth` |
-| `OTP_EXPIRES_MIN` | OTP expiration time in minutes | `15` |
+| Variable          | Description                    | Default   |
+| ----------------- | ------------------------------ | --------- |
+| `DATABASE_URL`    | PostgreSQL connection string   | -         |
+| `PORT`            | Server port                    | `5000`    |
+| `JWT_SECRET`      | Secret key for JWT signing     | -         |
+| `COOKIE_NAME`     | Name of auth cookie            | `sm_auth` |
+| `OTP_EXPIRES_MIN` | OTP expiration time in minutes | `15`      |
 
 ## Authentication Flow
 
@@ -200,6 +223,7 @@ All stock operations use database transactions to ensure consistency.
 See `prisma/schema.prisma` for the complete data model.
 
 Key entities:
+
 - **User** - System users (manager/staff roles)
 - **Warehouse** - Physical warehouse locations
 - **Location** - Storage locations within warehouses
