@@ -1,7 +1,7 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -56,6 +56,9 @@ export function WarehouseForm({ warehouse, onClose, onSave }: WarehouseFormProps
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Warehouse</DialogTitle>
+          <DialogDescription className="sr-only">
+            {warehouse ? 'Edit' : 'Create'} warehouse information
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">

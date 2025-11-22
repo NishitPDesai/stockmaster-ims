@@ -76,7 +76,7 @@ export function Receipts() {
 
   const handleStatusChange = async (id: string, status: OperationStatus) => {
     try {
-      await dispatch(changeOperationStatus({ id, status })).unwrap();
+      await dispatch(changeOperationStatus({ id, status, documentType: DocumentType.RECEIPT })).unwrap();
       await dispatch(fetchOperations({ documentType: DocumentType.RECEIPT }));
       dispatch(setSelectedOperation(null));
       toast(`Operation status changed to ${status}`, "success");

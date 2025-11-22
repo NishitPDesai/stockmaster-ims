@@ -60,33 +60,37 @@ export function Products() {
 
   const columns: Column<Product>[] = [
     {
-      key: "sku",
-      header: "SKU",
-      cell: (row) => <span className="font-mono text-sm">{row.sku}</span>,
-    },
-    {
       key: "name",
-      header: "Product Name",
+      header: "Product",
       cell: (row) => <span className="font-medium">{row.name}</span>,
     },
     {
-      key: "category",
-      header: "Category",
-      cell: (row) => row.category,
+      key: "unitCost",
+      header: "per unit cost",
+      cell: (row) => (
+        <span>{row.unitCost ? `${row.unitCost.toLocaleString()} Rs` : '-'}</span>
+      ),
     },
     {
-      key: "uom",
-      header: "UOM",
-      cell: (row) => row.uom,
-    },
-    {
-      key: "stock",
-      header: "Total Stock",
+      key: "onHand",
+      header: "On hand",
       cell: (row) => {
         const totalStock = Object.values(row.stockPerWarehouse || {}).reduce(
           (sum, qty) => sum + qty,
           0
-        );
+        ) || row.initialStock || 0;
+        return <span>{totalStock}</span>;
+      },
+    },
+    {
+      key: "freeToUse",
+      header: "free to Use",
+      cell: (row) => {
+        // For now, free to use = on hand (we can implement reservations later)
+        const totalStock = Object.values(row.stockPerWarehouse || {}).reduce(
+          (sum, qty) => sum + qty,
+          0
+        ) || row.initialStock || 0;
         return <span>{totalStock}</span>;
       },
     },
@@ -140,25 +144,27 @@ export function Products() {
   };
 
   const handleExport = () => {
-    const exportData = filteredProducts.map((p) => ({
-      SKU: p.sku,
-      "Product Name": p.name,
-      Category: p.category,
-      UOM: p.uom,
-      "Total Stock": Object.values(p.stockPerWarehouse || {}).reduce(
+    const exportData = filteredProducts.map((p) => {
+      const totalStock = Object.values(p.stockPerWarehouse || {}).reduce(
         (sum, qty) => sum + qty,
         0
-      ),
-    }));
-    exportToCSV(exportData, "products");
-    toast("Products exported successfully", "success");
+      ) || p.initialStock || 0;
+      return {
+        Product: p.name,
+        "per unit cost": p.unitCost ? `${p.unitCost} Rs` : '-',
+        "On hand": totalStock,
+        "free to Use": totalStock,
+      };
+    });
+    exportToCSV(exportData, "stock");
+    toast("Stock exported successfully", "success");
   };
 
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Products</h1>
+          <h1 className="text-3xl font-bold">Stock</h1>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleExport}>

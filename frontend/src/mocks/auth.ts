@@ -93,7 +93,12 @@ export const mockAuth = {
     // Simulate API delay
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
-    // Check if loginId or email already exists
+    // Check if loginId already exists
+    if (loginIdToEmail[credentials.loginId]) {
+      throw new Error('User with this login ID already exists')
+    }
+
+    // Check if email already exists
     const existingUser = Object.values(mockUsers).find(
       u => u.email === credentials.email
     )

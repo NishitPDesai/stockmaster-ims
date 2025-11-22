@@ -30,7 +30,7 @@ export const login = createAsyncThunk(
         return response;
       }
 
-      const response = await apiClient.post<AuthResponse>(
+      const response = await apiClient.post<{ success: boolean; user: User; token: string; refreshToken: string }>(
         "/auth/login",
         credentials
       );
@@ -42,7 +42,7 @@ export const login = createAsyncThunk(
 
       return { user, token, refreshToken };
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || "Login failed");
+      return rejectWithValue(error.response?.data?.message || error?.message || "Login failed");
     }
   }
 );
@@ -53,10 +53,16 @@ export const register = createAsyncThunk(
     try {
       if (USE_MOCK) {
         const response = await mockAuth.register(credentials)
-        return response
+        const { user, token, refreshToken } = response
+        
+        setStoredUser(user)
+        setAuthToken(token)
+        setRefreshToken(refreshToken)
+        
+        return { user, token, refreshToken }
       }
 
-      const response = await apiClient.post<AuthResponse>('/auth/register', credentials)
+      const response = await apiClient.post<{ success: boolean; user: User; token: string; refreshToken: string }>('/auth/register', credentials)
       const { user, token, refreshToken } = response.data
 
       setStoredUser(user)
@@ -65,7 +71,8 @@ export const register = createAsyncThunk(
 
       return { user, token, refreshToken }
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Registration failed')
+      const errorMessage = error?.response?.data?.message || error?.message || 'Registration failed'
+      return rejectWithValue(errorMessage)
     }
   }
 )

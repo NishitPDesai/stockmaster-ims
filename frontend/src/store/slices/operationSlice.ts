@@ -5,6 +5,7 @@ import {
   UpdateOperationDto,
   OperationFilters,
 } from "@/types";
+import { DocumentType } from "@/types/Status";
 import { apiClient, USE_MOCK } from "@/lib/api";
 import { mockOperations } from "@/mocks/operations";
 
@@ -126,14 +127,25 @@ export const updateOperation = createAsyncThunk(
 export const changeOperationStatus = createAsyncThunk(
   "operations/changeStatus",
   async (
-    { id, status }: { id: string; status: OperationStatus },
+    { id, status, documentType }: { id: string; status: OperationStatus; documentType?: DocumentType },
     { rejectWithValue }
   ) => {
     try {
       if (USE_MOCK) {
         return mockOperations.update(id, { status });
       }
-      const response = await apiClient.patch<Operation>(`/operations/${id}`, {
+
+      // Determine the correct endpoint based on document type
+      let endpoint = `/operations/receipts/${id}`;
+      if (documentType === "DELIVERY") {
+        endpoint = `/operations/deliveries/${id}`;
+      } else if (documentType === "TRANSFER") {
+        endpoint = `/operations/transfers/${id}`;
+      } else if (documentType === "ADJUSTMENT") {
+        endpoint = `/operations/adjustments/${id}`;
+      }
+
+      const response = await apiClient.patch<Operation>(endpoint, {
         status,
       });
       return response.data;
@@ -187,6 +199,24 @@ const operationSlice = createSlice({
         if (state.selectedOperation?.id === action.payload.id) {
           state.selectedOperation = action.payload;
         }
+      })
+      .addCase(changeOperationStatus.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(changeOperationStatus.fulfilled, (state, action) => {
+        state.isLoading = false;
+        const index = state.items.findIndex((o) => o.id === action.payload.id);
+        if (index !== -1) {
+          state.items[index] = action.payload;
+        }
+        if (state.selectedOperation?.id === action.payload.id) {
+          state.selectedOperation = action.payload;
+        }
+      })
+      .addCase(changeOperationStatus.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
       });
   },
 });

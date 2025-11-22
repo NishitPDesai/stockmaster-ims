@@ -57,7 +57,10 @@ export function Register() {
       })).unwrap()
       navigate('/dashboard')
     } catch (err: any) {
-      setError(err || 'Registration failed. Please try again.')
+      const errorMessage = typeof err === 'string' 
+        ? err 
+        : err?.message || err?.error || 'Registration failed. Please try again.'
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }

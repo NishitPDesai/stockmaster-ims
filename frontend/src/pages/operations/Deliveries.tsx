@@ -71,7 +71,7 @@ export function Deliveries() {
 
   const handleStatusChange = async (id: string, status: OperationStatus) => {
     try {
-      await dispatch(changeOperationStatus({ id, status })).unwrap();
+      await dispatch(changeOperationStatus({ id, status, documentType: DocumentType.DELIVERY })).unwrap();
       await dispatch(fetchOperations({ documentType: DocumentType.DELIVERY }));
       dispatch(setSelectedOperation(null));
       toast(`Operation status changed to ${status}`, "success");

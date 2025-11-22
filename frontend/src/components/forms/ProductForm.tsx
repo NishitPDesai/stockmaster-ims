@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,6 +81,9 @@ export function ProductForm({
           <DialogTitle>
             {product ? "Edit Product" : "Create Product"}
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            {product ? 'Edit' : 'Create'} product information
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">

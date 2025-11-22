@@ -6,6 +6,7 @@ export interface Product {
   uom: string // Unit of Measure
   initialStock: number
   stockPerWarehouse: Record<string, number> // warehouseId -> quantity
+  unitCost?: number // Per unit cost in Rs
   createdAt: string
   updatedAt: string
 }
@@ -22,6 +23,7 @@ export interface CreateProductDto {
   category: string
   uom: string
   initialStock: number
+  unitCost?: number
 }
 
 export interface UpdateProductDto extends Partial<CreateProductDto> {}

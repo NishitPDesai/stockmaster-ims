@@ -3,6 +3,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "./StatusBadge";
@@ -84,6 +85,9 @@ export function OperationDetails({
             <DialogTitle>
               Operation Details - {operation.documentNumber}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              View and manage operation details
+            </DialogDescription>
             <div className="flex gap-2">
               <Button variant="outline" size="icon" onClick={handlePrint}>
                 <Printer className="h-4 w-4" />
