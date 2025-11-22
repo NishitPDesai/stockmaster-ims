@@ -46,12 +46,26 @@ export const fetchOperations = createAsyncThunk(
 
 export const fetchOperationById = createAsyncThunk(
   "operations/fetchById",
-  async (id: string, { rejectWithValue }) => {
+  async (
+    { id, documentType }: { id: string; documentType: DocumentType },
+    { rejectWithValue }
+  ) => {
     try {
       if (USE_MOCK) {
         return mockOperations.getById(id);
       }
-      const response = await apiClient.get<Operation>(`/operations/${id}`);
+
+      // Determine the correct endpoint based on document type
+      let endpoint = `/operations/receipts/${id}`;
+      if (documentType === DocumentType.DELIVERY) {
+        endpoint = `/operations/deliveries/${id}`;
+      } else if (documentType === DocumentType.TRANSFER) {
+        endpoint = `/operations/transfers/${id}`;
+      } else if (documentType === DocumentType.ADJUSTMENT) {
+        endpoint = `/operations/adjustments/${id}`;
+      }
+
+      const response = await apiClient.get<Operation>(endpoint);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(
@@ -96,7 +110,7 @@ export const updateOperation = createAsyncThunk(
       id,
       data,
       documentType,
-    }: { id: string; data: UpdateOperationDto; documentType?: string },
+    }: { id: string; data: UpdateOperationDto; documentType?: DocumentType },
     { rejectWithValue }
   ) => {
     try {
@@ -105,16 +119,31 @@ export const updateOperation = createAsyncThunk(
       }
 
       // Determine the correct endpoint based on document type
+      const docType = documentType || data.documentType;
       let endpoint = `/operations/receipts/${id}`;
-      if (documentType === "DELIVERY") {
+      if (docType === DocumentType.DELIVERY) {
         endpoint = `/operations/deliveries/${id}`;
-      } else if (documentType === "TRANSFER") {
+      } else if (docType === DocumentType.TRANSFER) {
         endpoint = `/operations/transfers/${id}`;
-      } else if (documentType === "ADJUSTMENT") {
+      } else if (docType === DocumentType.ADJUSTMENT) {
         endpoint = `/operations/adjustments/${id}`;
       }
 
-      const response = await apiClient.patch<Operation>(endpoint, data);
+      // Filter data to only include valid update fields
+      const updateData: any = {};
+      if (data.status !== undefined) updateData.status = data.status;
+      if (data.scheduleDate !== undefined)
+        updateData.scheduledDate = data.scheduleDate; // Backend expects scheduledDate
+
+      // Add document-specific fields
+      if (docType === DocumentType.RECEIPT && data.supplierId !== undefined) {
+        updateData.supplierName = data.supplierId;
+      }
+      if (docType === DocumentType.DELIVERY && data.customerId !== undefined) {
+        updateData.customerName = data.customerId;
+      }
+
+      const response = await apiClient.patch<Operation>(endpoint, updateData);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(
@@ -127,7 +156,11 @@ export const updateOperation = createAsyncThunk(
 export const changeOperationStatus = createAsyncThunk(
   "operations/changeStatus",
   async (
-    { id, status, documentType }: { id: string; status: OperationStatus; documentType?: DocumentType },
+    {
+      id,
+      status,
+      documentType,
+    }: { id: string; status: OperationStatus; documentType?: DocumentType },
     { rejectWithValue }
   ) => {
     try {
@@ -136,19 +169,33 @@ export const changeOperationStatus = createAsyncThunk(
       }
 
       // Determine the correct endpoint based on document type
-      let endpoint = `/operations/receipts/${id}`;
+      let baseEndpoint = `/operations/receipts/${id}`;
       if (documentType === "DELIVERY") {
-        endpoint = `/operations/deliveries/${id}`;
+        baseEndpoint = `/operations/deliveries/${id}`;
       } else if (documentType === "TRANSFER") {
-        endpoint = `/operations/transfers/${id}`;
+        baseEndpoint = `/operations/transfers/${id}`;
       } else if (documentType === "ADJUSTMENT") {
-        endpoint = `/operations/adjustments/${id}`;
+        baseEndpoint = `/operations/adjustments/${id}`;
       }
 
-      const response = await apiClient.patch<Operation>(endpoint, {
-        status,
-      });
-      return response.data;
+      // For READY and DONE status, use validate endpoint
+      if (
+        status === "READY" ||
+        status === "DONE" ||
+        status === OperationStatus.READY ||
+        status === OperationStatus.DONE
+      ) {
+        const response = await apiClient.post<Operation>(
+          `${baseEndpoint}/validate`
+        );
+        return response.data;
+      } else {
+        // For other status changes (like CANCELED), use PATCH
+        const response = await apiClient.patch<Operation>(baseEndpoint, {
+          status,
+        });
+        return response.data;
+      }
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.message || "Failed to change operation status"

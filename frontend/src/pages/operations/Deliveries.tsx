@@ -1,35 +1,55 @@
-import { useEffect, useState } from 'react'
-import { useAppSelector, useAppDispatch } from '@/store/hooks'
-import { fetchOperations, setFilters, changeOperationStatus, setSelectedOperation, updateOperation, createOperation, fetchOperationById } from '@/store/slices/operationSlice'
-import { fetchWarehouses } from '@/store/slices/warehouseSlice'
-import { fetchProducts } from '@/store/slices/productSlice'
-import { DataTable, Column } from '@/components/common/DataTable'
-import { FilterBar } from '@/components/common/FilterBar'
-import { Button } from '@/components/ui/button'
-import { StatusBadge } from '@/components/common/StatusBadge'
-import { Operation, DocumentType } from '@/types'
-import { Plus, Download, Eye, Edit, Search, List, LayoutGrid } from 'lucide-react'
-import { formatDateTime, formatDate } from '@/lib/format'
-import { OperationForm } from '@/components/forms/OperationForm'
-import { OperationDetails } from '@/components/common/OperationDetails'
-import { StatusChangeDropdown } from '@/components/common/StatusChangeDropdown'
-import { KanbanView } from '@/components/common/KanbanView'
-import { exportToCSV } from '@/lib/export'
-import { hasPermission } from '@/lib/permissions'
-import { OperationStatus, StatusLabels } from '@/types/Status'
-import { toast } from '@/lib/toast'
-import { Input } from '@/components/ui/input'
+import { useEffect, useState } from "react";
+import { useAppSelector, useAppDispatch } from "@/store/hooks";
+import {
+  fetchOperations,
+  setFilters,
+  changeOperationStatus,
+  setSelectedOperation,
+  updateOperation,
+  createOperation,
+  fetchOperationById,
+} from "@/store/slices/operationSlice";
+import { fetchWarehouses } from "@/store/slices/warehouseSlice";
+import { fetchProducts } from "@/store/slices/productSlice";
+import { DataTable, Column } from "@/components/common/DataTable";
+import { FilterBar } from "@/components/common/FilterBar";
+import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/common/StatusBadge";
+import { Operation, DocumentType } from "@/types";
+import {
+  Plus,
+  Download,
+  Eye,
+  Edit,
+  Search,
+  List,
+  LayoutGrid,
+} from "lucide-react";
+import { formatDateTime, formatDate } from "@/lib/format";
+import { OperationForm } from "@/components/forms/OperationForm";
+import { OperationDetails } from "@/components/common/OperationDetails";
+import { StatusChangeDropdown } from "@/components/common/StatusChangeDropdown";
+import { KanbanView } from "@/components/common/KanbanView";
+import { exportToCSV } from "@/lib/export";
+import { hasPermission } from "@/lib/permissions";
+import { OperationStatus, StatusLabels } from "@/types/Status";
+import { toast } from "@/lib/toast";
+import { Input } from "@/components/ui/input";
 
 export function Deliveries() {
-  const dispatch = useAppDispatch()
-  const { items, isLoading, filters, selectedOperation } = useAppSelector((state) => state.operations)
-  const { warehouses } = useAppSelector((state) => state.warehouses)
-  const user = useAppSelector((state) => state.auth.user)
-  const [isFormOpen, setIsFormOpen] = useState(false)
-  const [editingOperation, setEditingOperation] = useState<Operation | null>(null)
-  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list')
-  const [showSearch, setShowSearch] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
+  const dispatch = useAppDispatch();
+  const { items, isLoading, filters, selectedOperation } = useAppSelector(
+    (state) => state.operations
+  );
+  const { warehouses } = useAppSelector((state) => state.warehouses);
+  const user = useAppSelector((state) => state.auth.user);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingOperation, setEditingOperation] = useState<Operation | null>(
+    null
+  );
+  const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     dispatch(fetchWarehouses());
@@ -37,31 +57,38 @@ export function Deliveries() {
     dispatch(fetchOperations({ documentType: DocumentType.DELIVERY }));
   }, [dispatch]);
 
-  const canCreate = hasPermission(user, 'operations.create')
-  const canEdit = hasPermission(user, 'operations.edit')
-  const canValidate = hasPermission(user, 'operations.validate')
-  const canComplete = hasPermission(user, 'operations.complete')
-  const canCancel = hasPermission(user, 'operations.cancel')
-  const isManager = user?.role === 'manager'
+  const canCreate = hasPermission(user, "operations.create");
+  const canEdit = hasPermission(user, "operations.edit");
+  const canValidate = hasPermission(user, "operations.validate");
+  const canComplete = hasPermission(user, "operations.complete");
+  const canCancel = hasPermission(user, "operations.cancel");
+  const isManager = user?.role === "manager";
 
-  const allDeliveries = (items || []).filter((o) => o.documentType === DocumentType.DELIVERY)
-  
+  const allDeliveries = (items || []).filter(
+    (o) => o.documentType === DocumentType.DELIVERY
+  );
+
   // Filter by search query
   const deliveries = allDeliveries.filter((d) => {
-    if (!searchQuery) return true
-    const query = searchQuery.toLowerCase()
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
     return (
       d.documentNumber.toLowerCase().includes(query) ||
       (d.customerName && d.customerName.toLowerCase().includes(query)) ||
       (d.warehouseName && d.warehouseName.toLowerCase().includes(query)) ||
       (d.deliveryAddress && d.deliveryAddress.toLowerCase().includes(query))
-    )
-  })
+    );
+  });
 
   const handleViewDetails = async (operation: Operation) => {
     // Fetch full operation details to ensure we have all data including lineItems
     try {
-      const fullOperation = await dispatch(fetchOperationById(operation.id)).unwrap();
+      const fullOperation = await dispatch(
+        fetchOperationById({
+          id: operation.id,
+          documentType: DocumentType.DELIVERY,
+        })
+      ).unwrap();
       dispatch(setSelectedOperation(fullOperation));
     } catch (error) {
       // If fetch fails, use the operation from the list
@@ -78,12 +105,23 @@ export function Deliveries() {
 
   const handleStatusChange = async (id: string, status: OperationStatus) => {
     try {
-      await dispatch(changeOperationStatus({ id, status, documentType: DocumentType.DELIVERY })).unwrap();
+      await dispatch(
+        changeOperationStatus({
+          id,
+          status,
+          documentType: DocumentType.DELIVERY,
+        })
+      ).unwrap();
       await dispatch(fetchOperations({ documentType: DocumentType.DELIVERY }));
       dispatch(setSelectedOperation(null));
       toast(`Operation status changed to ${status}`, "success");
-    } catch (error) {
-      toast("Failed to change operation status", "error");
+    } catch (error: any) {
+      console.error("Status change error:", error);
+      const message =
+        error?.message ||
+        error?.toString() ||
+        "Failed to change operation status";
+      toast(message, "error");
     }
   };
 
@@ -102,8 +140,8 @@ export function Deliveries() {
 
   const columns: Column<Operation>[] = [
     {
-      key: 'documentNumber',
-      header: 'Reference',
+      key: "documentNumber",
+      header: "Reference",
       cell: (row) => (
         <button
           onClick={() => handleViewDetails(row)}
@@ -114,28 +152,28 @@ export function Deliveries() {
       ),
     },
     {
-      key: 'from',
-      header: 'From',
-      cell: (row) => row.warehouseName || row.warehouseCode || '-',
+      key: "from",
+      header: "From",
+      cell: (row) => row.warehouseName || row.warehouseCode || "-",
     },
     {
-      key: 'to',
-      header: 'To',
-      cell: (row) => row.customerName || row.deliveryAddress || '-',
+      key: "to",
+      header: "To",
+      cell: (row) => row.customerName || row.deliveryAddress || "-",
     },
     {
-      key: 'contact',
-      header: 'Contact',
-      cell: (row) => row.customerName || '-',
+      key: "contact",
+      header: "Contact",
+      cell: (row) => row.customerName || "-",
     },
     {
-      key: 'scheduleDate',
-      header: 'Schedule date',
-      cell: (row) => row.scheduleDate ? formatDate(row.scheduleDate) : '-',
+      key: "scheduleDate",
+      header: "Schedule date",
+      cell: (row) => (row.scheduleDate ? formatDate(row.scheduleDate) : "-"),
     },
     {
-      key: 'status',
-      header: 'Status',
+      key: "status",
+      header: "Status",
       cell: (row) => (
         <StatusChangeDropdown
           currentStatus={row.status}
@@ -197,8 +235,8 @@ export function Deliveries() {
                 size="icon"
                 className="absolute right-0 top-0 h-full"
                 onClick={() => {
-                  setShowSearch(false)
-                  setSearchQuery('')
+                  setShowSearch(false);
+                  setSearchQuery("");
                 }}
               >
                 <Search className="h-4 w-4" />
@@ -215,18 +253,18 @@ export function Deliveries() {
             </Button>
           )}
           <Button
-            variant={viewMode === 'list' ? 'default' : 'outline'}
+            variant={viewMode === "list" ? "default" : "outline"}
             size="icon"
             title="List View"
-            onClick={() => setViewMode('list')}
+            onClick={() => setViewMode("list")}
           >
             <List className="h-4 w-4" />
           </Button>
           <Button
-            variant={viewMode === 'kanban' ? 'default' : 'outline'}
+            variant={viewMode === "kanban" ? "default" : "outline"}
             size="icon"
             title="Kanban View"
-            onClick={() => setViewMode('kanban')}
+            onClick={() => setViewMode("kanban")}
           >
             <LayoutGrid className="h-4 w-4" />
           </Button>
@@ -261,7 +299,7 @@ export function Deliveries() {
         showCategory={false}
       />
 
-      {viewMode === 'list' ? (
+      {viewMode === "list" ? (
         <DataTable
           columns={columns}
           data={deliveries}
@@ -287,15 +325,23 @@ export function Deliveries() {
           }}
           onSave={async (data) => {
             if (editingOperation) {
-              await dispatch(updateOperation({ id: editingOperation.id, data })).unwrap()
-              toast('Delivery updated successfully', 'success')
+              await dispatch(
+                updateOperation({
+                  id: editingOperation.id,
+                  data,
+                  documentType: DocumentType.DELIVERY,
+                })
+              ).unwrap();
+              toast("Delivery updated successfully", "success");
             } else {
-              await dispatch(createOperation(data)).unwrap()
-              toast('Delivery created successfully', 'success')
+              await dispatch(createOperation(data)).unwrap();
+              toast("Delivery created successfully", "success");
             }
-            await dispatch(fetchOperations({ documentType: DocumentType.DELIVERY }))
-            setIsFormOpen(false)
-            setEditingOperation(null)
+            await dispatch(
+              fetchOperations({ documentType: DocumentType.DELIVERY })
+            );
+            setIsFormOpen(false);
+            setEditingOperation(null);
           }}
         />
       )}

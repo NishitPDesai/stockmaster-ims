@@ -5,7 +5,12 @@ export async function list(req: Request, res: Response) {
   const locations = await service.listLocations(
     req.query.warehouseId as string
   );
-  res.json(locations);
+  // Transform to include warehouseName
+  const transformedLocations = locations.map((loc) => ({
+    ...loc,
+    warehouseName: loc.warehouse?.name,
+  }));
+  res.json(transformedLocations);
 }
 
 export async function getOne(req: Request, res: Response) {
