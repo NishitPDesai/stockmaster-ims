@@ -6,6 +6,8 @@ import { Topbar } from './components/layout/Topbar'
 import { ProtectedRoute } from './components/routing/ProtectedRoute'
 import { Login } from './pages/Login'
 import { Register } from './pages/Register'
+import { PasswordResetRequest } from './pages/PasswordResetRequest'
+import { PasswordReset } from './pages/PasswordReset'
 import { Dashboard } from './pages/Dashboard'
 import { Products } from './pages/Products'
 import { Receipts } from './pages/operations/Receipts'
@@ -39,6 +41,8 @@ function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/password-reset-request" element={<PasswordResetRequest />} />
+            <Route path="/password-reset" element={<PasswordReset />} />
             <Route
               path="/"
               element={

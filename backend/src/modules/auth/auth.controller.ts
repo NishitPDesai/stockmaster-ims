@@ -129,3 +129,63 @@ export async function logout(_req: Request, res: Response) {
   res.clearCookie(config.cookieName);
   res.json({ success: true });
 }
+
+export async function requestPasswordReset(req: Request, res: Response) {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Email is required" });
+    }
+
+    const result = await service.requestPasswordReset(email);
+    res.json(result);
+  } catch (error: any) {
+    console.error("Password reset request error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to process password reset request",
+    });
+  }
+}
+
+export async function resetPassword(req: Request, res: Response) {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    if (!email || !otp || !newPassword) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Email, OTP, and new password are required",
+        });
+    }
+
+    // Validate password strength (optional but recommended)
+    if (newPassword.length < 8) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Password must be at least 8 characters long",
+        });
+    }
+
+    const result = await service.resetPasswordWithOTP(email, otp, newPassword);
+    
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    res.json(result);
+  } catch (error: any) {
+    console.error("Password reset error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to reset password",
+    });
+  }
+}

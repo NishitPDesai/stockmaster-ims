@@ -101,13 +101,9 @@ export function Login() {
             </Button>
 
             <div className="text-center text-sm">
-              <button
-                type="button"
-                className="text-primary hover:underline"
-                onClick={() => {/* Handle forgot password */}}
-              >
+              <Link to="/password-reset-request" className="text-primary hover:underline">
                 Forgot Password?
-              </button>
+              </Link>
               <span className="mx-2">|</span>
               <Link to="/register" className="text-primary hover:underline">
                 Sign Up
