@@ -6,9 +6,16 @@ import config from "../../config";
 export async function signup(req: Request, res: Response) {
   const { name, email, password } = req.body;
   const user = await service.createUser(name, email, password);
+  const token = jwt.sign(
+    { userId: user.id, role: user.role },
+    config.jwtSecret,
+    { expiresIn: "8h" }
+  );
+  res.cookie(config.cookieName, token, { httpOnly: true, sameSite: "lax" });
   res.json({
     success: true,
     user: { id: user.id, email: user.email, name: user.name, role: user.role },
+    token,
   });
 }
 

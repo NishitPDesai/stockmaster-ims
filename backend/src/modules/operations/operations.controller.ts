@@ -1,6 +1,18 @@
 import { Request, Response } from "express";
 import * as service from "./operations.service";
 
+// List all operations (unified view)
+export async function listAllOperations(req: Request, res: Response) {
+  const filters = {
+    status: req.query.status,
+    type: req.query.type,
+    dateFrom: req.query.dateFrom,
+    dateTo: req.query.dateTo,
+  };
+  const operations = await service.listAllOperations(filters);
+  res.json(operations);
+}
+
 // Receipts
 export async function listReceipts(req: Request, res: Response) {
   const filters = {
@@ -27,7 +39,8 @@ export async function createReceipt(req: Request, res: Response) {
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   const userId = req.user?.id;
-  const receipt = await service.createReceipt(req.body, userId);
+  const code = `REC-${Date.now()}`;
+  const receipt = await service.createReceipt({ ...req.body, code }, userId);
   res.status(201).json(receipt);
 }
 
@@ -67,7 +80,8 @@ export async function createDelivery(req: Request, res: Response) {
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   const userId = req.user?.id;
-  const delivery = await service.createDelivery(req.body, userId);
+  const code = `DO-${Date.now()}`;
+  const delivery = await service.createDelivery({ ...req.body, code }, userId);
   res.status(201).json(delivery);
 }
 
@@ -105,7 +119,8 @@ export async function createTransfer(req: Request, res: Response) {
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   const userId = req.user?.id;
-  const transfer = await service.createTransfer(req.body, userId);
+  const code = `TRF-${Date.now()}`;
+  const transfer = await service.createTransfer({ ...req.body, code }, userId);
   res.status(201).json(transfer);
 }
 
@@ -144,7 +159,11 @@ export async function createAdjustment(req: Request, res: Response) {
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   const userId = req.user?.id;
-  const adjustment = await service.createAdjustment(req.body, userId);
+  const code = `ADJ-${Date.now()}`;
+  const adjustment = await service.createAdjustment(
+    { ...req.body, code },
+    userId
+  );
   res.status(201).json(adjustment);
 }
 

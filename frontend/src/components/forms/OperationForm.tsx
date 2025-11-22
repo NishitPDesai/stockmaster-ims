@@ -1,15 +1,26 @@
-import { useState, useEffect } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import * as z from 'zod'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { DocumentType, CreateOperationDto, Operation, Product } from '@/types'
-import { Plus, Trash2 } from 'lucide-react'
-import { useAppSelector } from '@/store/hooks'
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { DocumentType, CreateOperationDto, Operation, Product } from "@/types";
+import { Plus, Trash2 } from "lucide-react";
+import { useAppSelector } from "@/store/hooks";
 
 const operationSchema = z.object({
   warehouseId: z.string().optional(),
@@ -17,116 +28,170 @@ const operationSchema = z.object({
   destinationWarehouseId: z.string().optional(),
   supplierId: z.string().optional(),
   customerId: z.string().optional(),
-  lineItems: z.array(z.object({
-    productId: z.string().min(1, 'Product is required'),
-    quantity: z.number().min(0.01, 'Quantity must be greater than 0'),
-    uom: z.string().min(1, 'UOM is required'),
-  })).min(1, 'At least one line item is required'),
+  lineItems: z
+    .array(
+      z.object({
+        productId: z.string().min(1, "Product is required"),
+        quantity: z.number().min(0.01, "Quantity must be greater than 0"),
+        uom: z.string().min(1, "UOM is required"),
+      })
+    )
+    .min(1, "At least one line item is required"),
   notes: z.string().optional(),
-})
+});
 
-type OperationFormData = z.infer<typeof operationSchema>
+type OperationFormData = z.infer<typeof operationSchema>;
 
 interface OperationFormProps {
-  documentType: DocumentType
-  warehouses: Array<{ id: string; name: string }>
-  operation?: Operation | null
-  onClose: () => void
-  onSave: (data: CreateOperationDto) => Promise<void>
+  documentType: DocumentType;
+  warehouses: Array<{ id: string; name: string }>;
+  operation?: Operation | null;
+  onClose: () => void;
+  onSave: (data: CreateOperationDto) => Promise<void>;
 }
 
-export function OperationForm({ documentType, warehouses, operation, onClose, onSave }: OperationFormProps) {
-  const { items: products } = useAppSelector((state) => state.products)
-  const [lineItems, setLineItems] = useState<Array<{ productId: string; quantity: number; uom: string }>>(
+export function OperationForm({
+  documentType,
+  warehouses,
+  operation,
+  onClose,
+  onSave,
+}: OperationFormProps) {
+  const { items: products } = useAppSelector((state) => state.products);
+  const [lineItems, setLineItems] = useState<
+    Array<{ productId: string; quantity: number; uom: string }>
+  >(
     operation?.lineItems.map((item) => ({
       productId: item.productId,
       quantity: item.quantity,
       uom: item.uom,
-    })) || [{ productId: '', quantity: 0, uom: '' }]
-  )
+    })) || [{ productId: "", quantity: 0, uom: "" }]
+  );
 
   const {
     handleSubmit,
-    formState: { isSubmitting },
+    formState: { isSubmitting, errors },
     setValue,
     watch,
   } = useForm<OperationFormData>({
     resolver: zodResolver(operationSchema),
     defaultValues: {
-      lineItems: [{ productId: '', quantity: 0, uom: '' }],
+      lineItems: [{ productId: "", quantity: 0, uom: "" }],
     },
-  })
+  });
 
-  const warehouseId = watch('warehouseId')
-  const sourceWarehouseId = watch('sourceWarehouseId')
-  const destinationWarehouseId = watch('destinationWarehouseId')
+  const warehouseId = watch("warehouseId");
+  const sourceWarehouseId = watch("sourceWarehouseId");
+  const destinationWarehouseId = watch("destinationWarehouseId");
 
   useEffect(() => {
     if (operation) {
-      setValue('warehouseId', operation.warehouseId || '')
-      setValue('sourceWarehouseId', operation.sourceWarehouseId || '')
-      setValue('destinationWarehouseId', operation.destinationWarehouseId || '')
-      setValue('supplierId', operation.supplierId || '')
-      setValue('customerId', operation.customerId || '')
-      setValue('notes', operation.notes || '')
+      setValue("warehouseId", operation.warehouseId || "");
+      setValue("sourceWarehouseId", operation.sourceWarehouseId || "");
+      setValue(
+        "destinationWarehouseId",
+        operation.destinationWarehouseId || ""
+      );
+      setValue("supplierId", operation.supplierId || "");
+      setValue("customerId", operation.customerId || "");
+      setValue("notes", operation.notes || "");
     }
-  }, [operation, setValue])
+  }, [operation, setValue]);
+
+  useEffect(() => {
+    console.log("LineItems state updated:", lineItems);
+  }, [lineItems]);
 
   const getProductStock = (productId: string, warehouseId?: string): number => {
-    const product = products.find((p) => p.id === productId)
-    if (!product) return 0
+    const product = products.find((p) => p.id === productId);
+    if (!product) return 0;
+
+    // Sum all stock including virtual __initial__ warehouse
+    const totalStock = Object.values(product.stockPerWarehouse || {}).reduce(
+      (sum, qty) => sum + qty,
+      0
+    );
+
     if (warehouseId) {
-      return product.stockPerWarehouse?.[warehouseId] || 0
+      const warehouseStock = product.stockPerWarehouse?.[warehouseId] || 0;
+      // If no stock in specific warehouse but has initial stock, show total
+      return warehouseStock > 0 ? warehouseStock : totalStock;
     }
-    return Object.values(product.stockPerWarehouse || {}).reduce((sum, qty) => sum + qty, 0)
-  }
+
+    return totalStock;
+  };
 
   const onSubmit = async (data: OperationFormData) => {
-    await onSave({
-      documentType,
-      warehouseId: data.warehouseId,
-      sourceWarehouseId: data.sourceWarehouseId,
-      destinationWarehouseId: data.destinationWarehouseId,
-      supplierId: data.supplierId,
-      customerId: data.customerId,
-      lineItems: lineItems.map((item) => ({
-        productId: item.productId,
-        quantity: item.quantity,
-        uom: item.uom,
-      })),
-      notes: data.notes,
-    })
-  }
+    console.log("Form submitted with data:", data);
+    console.log("Line items state:", lineItems);
+    try {
+      await onSave({
+        documentType,
+        warehouseId: data.warehouseId,
+        sourceWarehouseId: data.sourceWarehouseId,
+        destinationWarehouseId: data.destinationWarehouseId,
+        supplierId: data.supplierId,
+        customerId: data.customerId,
+        lineItems: lineItems.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          uom: item.uom,
+        })),
+        notes: data.notes,
+      });
+    } catch (error) {
+      console.error("Form submission error:", error);
+      throw error;
+    }
+  };
 
   const addLineItem = () => {
-    setLineItems([...lineItems, { productId: '', quantity: 0, uom: '' }])
-  }
+    setLineItems([...lineItems, { productId: "", quantity: 0, uom: "" }]);
+  };
 
   const removeLineItem = (index: number) => {
-    setLineItems(lineItems.filter((_, i) => i !== index))
-  }
+    setLineItems(lineItems.filter((_, i) => i !== index));
+  };
 
-  const updateLineItem = (index: number, field: string, value: string | number) => {
-    const updated = [...lineItems]
-    updated[index] = { ...updated[index], [field]: value }
-    setLineItems(updated)
-    setValue('lineItems', updated)
-  }
+  const updateLineItem = (
+    index: number,
+    field: string,
+    value: string | number
+  ) => {
+    setLineItems((prevItems) => {
+      const updated = [...prevItems];
+      updated[index] = { ...updated[index], [field]: value };
+      console.log(
+        "Updating line item:",
+        index,
+        field,
+        value,
+        "Updated array:",
+        updated
+      );
+      setValue("lineItems", updated);
+      return updated;
+    });
+  };
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{operation ? 'Edit' : 'Create'} {documentType}</DialogTitle>
+          <DialogTitle>
+            {operation ? "Edit" : "Create"} {documentType}
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {documentType === 'TRANSFER' ? (
+          {documentType === "TRANSFER" ? (
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="sourceWarehouse">Source Warehouse *</Label>
                 <Select
-                  value={sourceWarehouseId || ''}
-                  onValueChange={(value) => setValue('sourceWarehouseId', value)}
+                  value={sourceWarehouseId || ""}
+                  onValueChange={(value) =>
+                    setValue("sourceWarehouseId", value)
+                  }
                 >
                   <SelectTrigger id="sourceWarehouse">
                     <SelectValue placeholder="Select source warehouse" />
@@ -141,10 +206,14 @@ export function OperationForm({ documentType, warehouses, operation, onClose, on
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="destinationWarehouse">Destination Warehouse *</Label>
+                <Label htmlFor="destinationWarehouse">
+                  Destination Warehouse *
+                </Label>
                 <Select
-                  value={destinationWarehouseId || ''}
-                  onValueChange={(value) => setValue('destinationWarehouseId', value)}
+                  value={destinationWarehouseId || ""}
+                  onValueChange={(value) =>
+                    setValue("destinationWarehouseId", value)
+                  }
                 >
                   <SelectTrigger id="destinationWarehouse">
                     <SelectValue placeholder="Select destination warehouse" />
@@ -163,8 +232,8 @@ export function OperationForm({ documentType, warehouses, operation, onClose, on
             <div className="space-y-2">
               <Label htmlFor="warehouse">Warehouse *</Label>
               <Select
-                value={warehouseId || ''}
-                onValueChange={(value) => setValue('warehouseId', value)}
+                value={warehouseId || ""}
+                onValueChange={(value) => setValue("warehouseId", value)}
               >
                 <SelectTrigger id="warehouse">
                   <SelectValue placeholder="Select warehouse" />
@@ -184,21 +253,34 @@ export function OperationForm({ documentType, warehouses, operation, onClose, on
             <Label>Line Items</Label>
             <div className="space-y-2">
               {lineItems.map((item, index) => {
-                const selectedProduct = products.find((p) => p.id === item.productId)
-                const currentWarehouseId = documentType === 'TRANSFER' ? sourceWarehouseId : warehouseId
-                const stock = selectedProduct ? getProductStock(item.productId, currentWarehouseId) : 0
-                
+                const selectedProduct = products.find(
+                  (p) => p.id === item.productId
+                );
+                const currentWarehouseId =
+                  documentType === "TRANSFER" ? sourceWarehouseId : warehouseId;
+                const stock = selectedProduct
+                  ? getProductStock(item.productId, currentWarehouseId)
+                  : 0;
+
+                console.log(`Line item ${index} productId:`, item.productId);
+
                 return (
-                  <div key={index} className="flex gap-2 items-end border rounded-lg p-3">
+                  <div
+                    key={index}
+                    className="flex gap-2 items-end border rounded-lg p-3"
+                  >
                     <div className="flex-1">
                       <Label>Product *</Label>
                       <Select
-                        value={item.productId}
+                        key={item.productId || `empty-${index}`}
+                        value={item.productId || ""}
                         onValueChange={(value) => {
-                          const product = products.find((p) => p.id === value)
-                          updateLineItem(index, 'productId', value)
+                          console.log("Product selected:", value);
+                          const product = products.find((p) => p.id === value);
+                          console.log("Found product:", product);
+                          updateLineItem(index, "productId", value);
                           if (product) {
-                            updateLineItem(index, 'uom', product.uom)
+                            updateLineItem(index, "uom", product.uom);
                           }
                         }}
                       >
@@ -208,7 +290,9 @@ export function OperationForm({ documentType, warehouses, operation, onClose, on
                         <SelectContent>
                           {products.map((product) => (
                             <SelectItem key={product.id} value={product.id}>
-                              {product.name} ({product.sku}) - Stock: {getProductStock(product.id, currentWarehouseId)} {product.uom}
+                              {product.name} ({product.sku}) - Stock:{" "}
+                              {getProductStock(product.id, currentWarehouseId)}{" "}
+                              {product.uom}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -225,8 +309,14 @@ export function OperationForm({ documentType, warehouses, operation, onClose, on
                         type="number"
                         min="0.01"
                         step="0.01"
-                        value={item.quantity || ''}
-                        onChange={(e) => updateLineItem(index, 'quantity', parseFloat(e.target.value) || 0)}
+                        value={item.quantity || ""}
+                        onChange={(e) =>
+                          updateLineItem(
+                            index,
+                            "quantity",
+                            parseFloat(e.target.value) || 0
+                          )
+                        }
                         placeholder="Qty"
                       />
                     </div>
@@ -234,7 +324,9 @@ export function OperationForm({ documentType, warehouses, operation, onClose, on
                       <Label>UOM *</Label>
                       <Input
                         value={item.uom}
-                        onChange={(e) => updateLineItem(index, 'uom', e.target.value)}
+                        onChange={(e) =>
+                          updateLineItem(index, "uom", e.target.value)
+                        }
                         placeholder="UOM"
                         readOnly={!!selectedProduct}
                       />
@@ -250,9 +342,14 @@ export function OperationForm({ documentType, warehouses, operation, onClose, on
                       </Button>
                     )}
                   </div>
-                )
+                );
               })}
-              <Button type="button" variant="outline" onClick={addLineItem} className="w-full">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={addLineItem}
+                className="w-full"
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 Add Line Item
               </Button>
@@ -261,20 +358,37 @@ export function OperationForm({ documentType, warehouses, operation, onClose, on
 
           <div className="space-y-2">
             <Label htmlFor="notes">Notes</Label>
-            <Input id="notes" {...{ onChange: (e) => setValue('notes', e.target.value) }} />
+            <Input
+              id="notes"
+              {...{ onChange: (e) => setValue("notes", e.target.value) }}
+            />
           </div>
+
+          {errors.lineItems && (
+            <p className="text-sm text-red-600">
+              {errors.lineItems.message || "Please check line items"}
+            </p>
+          )}
+          {errors.warehouseId && (
+            <p className="text-sm text-red-600">{errors.warehouseId.message}</p>
+          )}
 
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (operation ? 'Updating...' : 'Creating...') : (operation ? 'Update' : 'Create')}
+              {isSubmitting
+                ? operation
+                  ? "Updating..."
+                  : "Creating..."
+                : operation
+                ? "Update"
+                : "Create"}
             </Button>
           </div>
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
-

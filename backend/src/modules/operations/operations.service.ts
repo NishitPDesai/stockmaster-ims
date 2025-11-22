@@ -1,5 +1,160 @@
-import prisma from '../../lib/prisma';
-import { OperationStatus } from '@prisma/client';
+import prisma from "../../lib/prisma";
+import { OperationStatus } from "@prisma/client";
+
+// Transform operation data to match frontend expectations
+function transformOperation(operation: any, type: string) {
+  const baseTransform = {
+    ...operation,
+    documentType: type,
+    documentNumber: operation.code,
+    lineItems:
+      operation.lines?.map((line: any) => ({
+        id: line.id,
+        productId: line.productId,
+        productName: line.product?.name,
+        productSku: line.product?.sku,
+        quantity: line.orderedQty || line.receivedQty || line.quantity || 0,
+        uom: line.product?.uom,
+        unitPrice: line.unitPrice,
+        totalPrice: line.totalPrice,
+      })) || [],
+  };
+
+  // Add type-specific fields
+  if (type === "RECEIPT") {
+    return {
+      ...baseTransform,
+      warehouseId: operation.lines?.[0]?.location?.warehouseId,
+      warehouseName: operation.lines?.[0]?.location?.warehouse?.name,
+    };
+  } else if (type === "DELIVERY") {
+    return {
+      ...baseTransform,
+      warehouseId: operation.lines?.[0]?.sourceLocation?.warehouseId,
+      warehouseName: operation.lines?.[0]?.sourceLocation?.warehouse?.name,
+    };
+  } else if (type === "TRANSFER") {
+    return {
+      ...baseTransform,
+      sourceWarehouseId: operation.lines?.[0]?.sourceLocation?.warehouseId,
+      sourceWarehouseName:
+        operation.lines?.[0]?.sourceLocation?.warehouse?.name,
+      destinationWarehouseId:
+        operation.lines?.[0]?.destinationLocation?.warehouseId,
+      destinationWarehouseName:
+        operation.lines?.[0]?.destinationLocation?.warehouse?.name,
+    };
+  } else if (type === "ADJUSTMENT") {
+    return {
+      ...baseTransform,
+      warehouseId: operation.location?.warehouseId,
+      warehouseName: operation.location?.warehouse?.name,
+    };
+  }
+
+  return baseTransform;
+}
+
+// List all operations (combined view)
+export async function listAllOperations(filters: any = {}) {
+  const { status, type, dateFrom, dateTo } = filters;
+
+  const dateFilter: any = {};
+  if (dateFrom || dateTo) {
+    if (dateFrom) dateFilter.gte = new Date(dateFrom);
+    if (dateTo) dateFilter.lte = new Date(dateTo);
+  }
+
+  const whereClause: any = {};
+  if (status) whereClause.status = status;
+  if (Object.keys(dateFilter).length > 0) {
+    whereClause.createdAt = dateFilter;
+  }
+
+  const operations: any[] = [];
+
+  // Fetch receipts
+  if (!type || type === "RECEIPT") {
+    const receipts = await prisma.receipt.findMany({
+      where: whereClause,
+      include: {
+        lines: {
+          include: {
+            product: true,
+            location: { include: { warehouse: true } },
+          },
+        },
+        createdBy: { select: { id: true, name: true, email: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    operations.push(...receipts.map((r) => transformOperation(r, "RECEIPT")));
+  }
+
+  // Fetch deliveries
+  if (!type || type === "DELIVERY") {
+    const deliveries = await prisma.deliveryOrder.findMany({
+      where: whereClause,
+      include: {
+        lines: {
+          include: {
+            product: true,
+            sourceLocation: { include: { warehouse: true } },
+          },
+        },
+        createdBy: { select: { id: true, name: true, email: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    operations.push(
+      ...deliveries.map((d) => transformOperation(d, "DELIVERY"))
+    );
+  }
+
+  // Fetch transfers
+  if (!type || type === "TRANSFER") {
+    const transfers = await prisma.internalTransfer.findMany({
+      where: whereClause,
+      include: {
+        lines: {
+          include: {
+            product: true,
+            sourceLocation: { include: { warehouse: true } },
+            destinationLocation: { include: { warehouse: true } },
+          },
+        },
+        createdBy: { select: { id: true, name: true, email: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    operations.push(...transfers.map((t) => transformOperation(t, "TRANSFER")));
+  }
+
+  // Fetch adjustments
+  if (!type || type === "ADJUSTMENT") {
+    const adjustments = await prisma.inventoryAdjustment.findMany({
+      where: whereClause,
+      include: {
+        lines: {
+          include: {
+            product: true,
+          },
+        },
+        location: { include: { warehouse: true } },
+        createdBy: { select: { id: true, name: true, email: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    operations.push(
+      ...adjustments.map((a) => transformOperation(a, "ADJUSTMENT"))
+    );
+  }
+
+  // Sort by createdAt descending
+  operations.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+  return operations;
+}
 
 async function updateStockQuant(
   productId: string,
@@ -55,11 +210,11 @@ export async function listReceipts(filters: any = {}) {
     );
   }
 
-  return receipts;
+  return receipts.map((r) => transformOperation(r, "RECEIPT"));
 }
 
 export async function getReceiptById(id: string) {
-  return prisma.receipt.findUnique({
+  const receipt = await prisma.receipt.findUnique({
     where: { id },
     include: {
       lines: {
@@ -71,6 +226,7 @@ export async function getReceiptById(id: string) {
       createdBy: { select: { id: true, name: true, email: true } },
     },
   });
+  return receipt ? transformOperation(receipt, "RECEIPT") : null;
 }
 
 export async function createReceipt(
@@ -183,17 +339,18 @@ export async function listDeliveries(filters: any = {}) {
     orderBy: { createdAt: "desc" },
   });
 
+  let filteredDeliveries = deliveries;
   if (warehouseId) {
-    return deliveries.filter((d) =>
+    filteredDeliveries = deliveries.filter((d) =>
       d.lines.some((l) => l.sourceLocation.warehouseId === warehouseId)
     );
   }
 
-  return deliveries;
+  return filteredDeliveries.map((d) => transformOperation(d, "DELIVERY"));
 }
 
 export async function getDeliveryById(id: string) {
-  return prisma.deliveryOrder.findUnique({
+  const delivery = await prisma.deliveryOrder.findUnique({
     where: { id },
     include: {
       lines: {
@@ -205,6 +362,7 @@ export async function getDeliveryById(id: string) {
       createdBy: { select: { id: true, name: true, email: true } },
     },
   });
+  return delivery ? transformOperation(delivery, "DELIVERY") : null;
 }
 
 export async function createDelivery(
@@ -317,7 +475,7 @@ export async function listTransfers(filters: any = {}) {
     if (dateTo) where.createdAt.lte = new Date(dateTo);
   }
 
-  return prisma.internalTransfer.findMany({
+  const transfers = await prisma.internalTransfer.findMany({
     where,
     include: {
       lines: {
@@ -331,10 +489,11 @@ export async function listTransfers(filters: any = {}) {
     },
     orderBy: { createdAt: "desc" },
   });
+  return transfers.map((t) => transformOperation(t, "TRANSFER"));
 }
 
 export async function getTransferById(id: string) {
-  return prisma.internalTransfer.findUnique({
+  const transfer = await prisma.internalTransfer.findUnique({
     where: { id },
     include: {
       lines: {
@@ -347,6 +506,7 @@ export async function getTransferById(id: string) {
       createdBy: { select: { id: true, name: true, email: true } },
     },
   });
+  return transfer ? transformOperation(transfer, "TRANSFER") : null;
 }
 
 export async function createTransfer(
@@ -465,7 +625,7 @@ export async function listAdjustments(filters: any = {}) {
     if (dateTo) where.createdAt.lte = new Date(dateTo);
   }
 
-  return prisma.inventoryAdjustment.findMany({
+  const adjustments = await prisma.inventoryAdjustment.findMany({
     where,
     include: {
       location: { include: { warehouse: true } },
@@ -474,10 +634,11 @@ export async function listAdjustments(filters: any = {}) {
     },
     orderBy: { createdAt: "desc" },
   });
+  return adjustments.map((a) => transformOperation(a, "ADJUSTMENT"));
 }
 
 export async function getAdjustmentById(id: string) {
-  return prisma.inventoryAdjustment.findUnique({
+  const adjustment = await prisma.inventoryAdjustment.findUnique({
     where: { id },
     include: {
       location: { include: { warehouse: true } },
@@ -485,6 +646,7 @@ export async function getAdjustmentById(id: string) {
       createdBy: { select: { id: true, name: true, email: true } },
     },
   });
+  return adjustment ? transformOperation(adjustment, "ADJUSTMENT") : null;
 }
 
 export async function createAdjustment(

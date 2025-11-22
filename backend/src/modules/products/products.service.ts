@@ -1,4 +1,5 @@
 import prisma from "../../lib/prisma";
+import { ProductCategory } from "@prisma/client";
 
 export async function listProducts(filters: any = {}) {
   const { search, category, warehouseId, locationId, lowStockOnly } = filters;
@@ -45,6 +46,19 @@ export async function listProducts(filters: any = {}) {
       const whId = quant.location.warehouseId;
       stockPerWarehouse[whId] = (stockPerWarehouse[whId] || 0) + quant.quantity;
     });
+
+    // If no stock quants exist but initialStock is set, show it as virtual stock
+    // This helps during initial setup before receipts are created
+    const hasStockQuants = product.stockQuants.length > 0;
+    const totalStockFromQuants = Object.values(stockPerWarehouse).reduce(
+      (a, b) => a + b,
+      0
+    );
+
+    // If no stock movements yet, use initialStock as a virtual warehouse entry
+    if (!hasStockQuants && product.initialStock > 0) {
+      stockPerWarehouse["__initial__"] = product.initialStock;
+    }
 
     return {
       id: product.id,
@@ -121,7 +135,7 @@ export async function createProduct(data: {
     data: {
       name: data.name,
       sku: data.sku,
-      category: data.category,
+      category: data.category as ProductCategory | undefined,
       uom: data.uom,
       initialStock: data.initialStock || 0,
     },
@@ -140,9 +154,14 @@ export async function updateProduct(
     isActive: boolean;
   }>
 ) {
+  const updateData: any = { ...data };
+  if (updateData.category) {
+    updateData.category = updateData.category as ProductCategory;
+  }
+
   const product = await prisma.product.update({
     where: { id },
-    data,
+    data: updateData,
   });
 
   return product;

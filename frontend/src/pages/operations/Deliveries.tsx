@@ -1,80 +1,93 @@
-import { useEffect, useState } from 'react'
-import { useAppSelector, useAppDispatch } from '@/store/hooks'
-import { fetchOperations, setFilters, changeOperationStatus, setSelectedOperation, updateOperation } from '@/store/slices/operationSlice'
-import { fetchWarehouses } from '@/store/slices/warehouseSlice'
-import { fetchProducts } from '@/store/slices/productSlice'
-import { DataTable, Column } from '@/components/common/DataTable'
-import { FilterBar } from '@/components/common/FilterBar'
-import { Button } from '@/components/ui/button'
-import { StatusBadge } from '@/components/common/StatusBadge'
-import { Operation, DocumentType } from '@/types'
-import { Plus, Download, Eye, Edit } from 'lucide-react'
-import { formatDateTime } from '@/lib/format'
-import { OperationForm } from '@/components/forms/OperationForm'
-import { OperationDetails } from '@/components/common/OperationDetails'
-import { exportToCSV } from '@/lib/export'
-import { hasPermission } from '@/lib/permissions'
-import { OperationStatus } from '@/types/Status'
-import { toast } from '@/lib/toast'
+import { useEffect, useState } from "react";
+import { useAppSelector, useAppDispatch } from "@/store/hooks";
+import {
+  fetchOperations,
+  setFilters,
+  changeOperationStatus,
+  setSelectedOperation,
+  updateOperation,
+  createOperation,
+} from "@/store/slices/operationSlice";
+import { fetchWarehouses } from "@/store/slices/warehouseSlice";
+import { fetchProducts } from "@/store/slices/productSlice";
+import { DataTable, Column } from "@/components/common/DataTable";
+import { FilterBar } from "@/components/common/FilterBar";
+import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/common/StatusBadge";
+import { Operation, DocumentType } from "@/types";
+import { Plus, Download, Eye, Edit } from "lucide-react";
+import { formatDateTime } from "@/lib/format";
+import { OperationForm } from "@/components/forms/OperationForm";
+import { OperationDetails } from "@/components/common/OperationDetails";
+import { exportToCSV } from "@/lib/export";
+import { hasPermission } from "@/lib/permissions";
+import { OperationStatus } from "@/types/Status";
+import { toast } from "@/lib/toast";
 
 export function Deliveries() {
-  const dispatch = useAppDispatch()
-  const { items, isLoading, filters, selectedOperation } = useAppSelector((state) => state.operations)
-  const { warehouses } = useAppSelector((state) => state.warehouses)
-  const user = useAppSelector((state) => state.auth.user)
-  const [isFormOpen, setIsFormOpen] = useState(false)
-  const [editingOperation, setEditingOperation] = useState<Operation | null>(null)
+  const dispatch = useAppDispatch();
+  const { items, isLoading, filters, selectedOperation } = useAppSelector(
+    (state) => state.operations
+  );
+  const { warehouses } = useAppSelector((state) => state.warehouses);
+  const user = useAppSelector((state) => state.auth.user);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingOperation, setEditingOperation] = useState<Operation | null>(
+    null
+  );
 
   useEffect(() => {
-    dispatch(fetchWarehouses())
-    dispatch(fetchProducts())
-    dispatch(fetchOperations({ documentType: DocumentType.DELIVERY }))
-  }, [dispatch])
+    dispatch(fetchWarehouses());
+    dispatch(fetchProducts());
+    dispatch(fetchOperations({ documentType: DocumentType.DELIVERY }));
+  }, [dispatch]);
 
-  const canCreate = hasPermission(user, 'operations.create')
-  const canEdit = hasPermission(user, 'operations.edit')
+  const canCreate = hasPermission(user, "operations.create");
+  const canEdit = hasPermission(user, "operations.edit");
 
   const handleViewDetails = (operation: Operation) => {
-    dispatch(setSelectedOperation(operation))
-  }
+    dispatch(setSelectedOperation(operation));
+  };
 
   const handleEdit = (operation: Operation) => {
     if (operation.status === OperationStatus.DRAFT && canEdit) {
-      setEditingOperation(operation)
-      setIsFormOpen(true)
+      setEditingOperation(operation);
+      setIsFormOpen(true);
     }
-  }
+  };
 
   const handleStatusChange = async (id: string, status: OperationStatus) => {
     try {
-      await dispatch(changeOperationStatus({ id, status })).unwrap()
-      await dispatch(fetchOperations({ documentType: DocumentType.DELIVERY }))
-      dispatch(setSelectedOperation(null))
-      toast(`Operation status changed to ${status}`, 'success')
+      await dispatch(changeOperationStatus({ id, status })).unwrap();
+      await dispatch(fetchOperations({ documentType: DocumentType.DELIVERY }));
+      dispatch(setSelectedOperation(null));
+      toast(`Operation status changed to ${status}`, "success");
     } catch (error) {
-      toast('Failed to change operation status', 'error')
+      toast("Failed to change operation status", "error");
     }
-  }
+  };
 
   const handleExport = () => {
     const exportData = deliveries.map((d) => ({
-      'Document Number': d.documentNumber,
-      'Warehouse': d.warehouseName || '',
-      'Customer': d.customerName || '',
-      'Status': d.status,
-      'Created': formatDateTime(d.createdAt),
-      'Line Items': d.lineItems.length,
-    }))
-    exportToCSV(exportData, 'deliveries')
-    toast('Deliveries exported successfully', 'success')
-  }
+      "Document Number": d.documentNumber,
+      Warehouse: d.warehouseName || "",
+      Customer: d.customerName || "",
+      Status: d.status,
+      Created: formatDateTime(d.createdAt),
+      "Line Items": d.lineItems.length,
+    }));
+    exportToCSV(exportData, "deliveries");
+    toast("Deliveries exported successfully", "success");
+  };
 
-  const deliveries = (items || []).filter((o) => o.documentType === DocumentType.DELIVERY)
+  const deliveries = (items || []).filter(
+    (o) => o.documentType === DocumentType.DELIVERY
+  );
 
   const columns: Column<Operation>[] = [
     {
-      key: 'documentNumber',
-      header: 'Document #',
+      key: "documentNumber",
+      header: "Document #",
       cell: (row) => (
         <button
           onClick={() => handleViewDetails(row)}
@@ -85,28 +98,28 @@ export function Deliveries() {
       ),
     },
     {
-      key: 'warehouse',
-      header: 'Warehouse',
-      cell: (row) => row.warehouseName || '-',
+      key: "warehouse",
+      header: "Warehouse",
+      cell: (row) => row.warehouseName || "-",
     },
     {
-      key: 'customer',
-      header: 'Customer',
-      cell: (row) => row.customerName || '-',
+      key: "customer",
+      header: "Customer",
+      cell: (row) => row.customerName || "-",
     },
     {
-      key: 'status',
-      header: 'Status',
+      key: "status",
+      header: "Status",
       cell: (row) => <StatusBadge status={row.status} />,
     },
     {
-      key: 'createdAt',
-      header: 'Created',
+      key: "createdAt",
+      header: "Created",
       cell: (row) => formatDateTime(row.createdAt),
     },
     {
-      key: 'actions',
-      header: 'Actions',
+      key: "actions",
+      header: "Actions",
       cell: (row) => (
         <div className="flex gap-2">
           <Button
@@ -130,14 +143,16 @@ export function Deliveries() {
         </div>
       ),
     },
-  ]
+  ];
 
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Deliveries</h1>
-          <p className="text-muted-foreground">Manage outgoing stock deliveries</p>
+          <p className="text-muted-foreground">
+            Manage outgoing stock deliveries
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleExport}>
@@ -145,10 +160,12 @@ export function Deliveries() {
             Export
           </Button>
           {canCreate && (
-            <Button onClick={() => {
-              setEditingOperation(null)
-              setIsFormOpen(true)
-            }}>
+            <Button
+              onClick={() => {
+                setEditingOperation(null);
+                setIsFormOpen(true);
+              }}
+            >
               <Plus className="mr-2 h-4 w-4" />
               New Delivery
             </Button>
@@ -159,8 +176,14 @@ export function Deliveries() {
       <FilterBar
         filters={filters}
         onFiltersChange={(newFilters) => {
-          dispatch(setFilters(newFilters))
-          dispatch(fetchOperations({ ...filters, ...newFilters, documentType: DocumentType.DELIVERY }))
+          dispatch(setFilters(newFilters));
+          dispatch(
+            fetchOperations({
+              ...filters,
+              ...newFilters,
+              documentType: DocumentType.DELIVERY,
+            })
+          );
         }}
         warehouses={warehouses || []}
         showDocumentType={false}
@@ -180,20 +203,32 @@ export function Deliveries() {
           warehouses={warehouses || []}
           operation={editingOperation}
           onClose={() => {
-            setIsFormOpen(false)
-            setEditingOperation(null)
+            setIsFormOpen(false);
+            setEditingOperation(null);
           }}
           onSave={async (data) => {
-            if (editingOperation) {
-              await dispatch(updateOperation({ id: editingOperation.id, data })).unwrap()
-              toast('Delivery updated successfully', 'success')
-            } else {
-              await dispatch(fetchOperations({ documentType: DocumentType.DELIVERY }))
-              toast('Delivery created successfully', 'success')
+            try {
+              if (editingOperation) {
+                await dispatch(
+                  updateOperation({
+                    id: editingOperation.id,
+                    data,
+                    documentType: DocumentType.DELIVERY,
+                  })
+                ).unwrap();
+                toast("Delivery updated successfully", "success");
+              } else {
+                await dispatch(createOperation(data)).unwrap();
+                toast("Delivery created successfully", "success");
+              }
+              await dispatch(
+                fetchOperations({ documentType: DocumentType.DELIVERY })
+              );
+              setIsFormOpen(false);
+              setEditingOperation(null);
+            } catch (error) {
+              toast("Failed to save delivery", "error");
             }
-            await dispatch(fetchOperations({ documentType: DocumentType.DELIVERY }))
-            setIsFormOpen(false)
-            setEditingOperation(null)
           }}
         />
       )}
@@ -206,6 +241,5 @@ export function Deliveries() {
         />
       )}
     </div>
-  )
+  );
 }
-

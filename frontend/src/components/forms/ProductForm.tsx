@@ -1,31 +1,47 @@
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import * as z from 'zod'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Product, ProductCategory, CreateProductDto } from '@/types'
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Product, ProductCategory, CreateProductDto } from "@/types";
 
 const productSchema = z.object({
-  name: z.string().min(1, 'Product name is required'),
-  sku: z.string().min(1, 'SKU is required'),
-  category: z.string().min(1, 'Category is required'),
-  uom: z.string().min(1, 'Unit of measure is required'),
-  initialStock: z.number().min(0, 'Initial stock must be 0 or greater'),
-})
+  name: z.string().min(1, "Product name is required"),
+  sku: z.string().min(1, "SKU is required"),
+  category: z.string().min(1, "Category is required"),
+  uom: z.string().min(1, "Unit of measure is required"),
+  initialStock: z.number().min(0, "Initial stock must be 0 or greater"),
+});
 
-type ProductFormData = z.infer<typeof productSchema>
+type ProductFormData = z.infer<typeof productSchema>;
 
 interface ProductFormProps {
-  product: Product | null
-  categories: ProductCategory[]
-  onClose: () => void
-  onSave: (data: CreateProductDto) => Promise<void>
+  product: Product | null;
+  categories: ProductCategory[];
+  onClose: () => void;
+  onSave: (data: CreateProductDto) => Promise<void>;
 }
 
-export function ProductForm({ product, categories, onClose, onSave }: ProductFormProps) {
+export function ProductForm({
+  product,
+  categories,
+  onClose,
+  onSave,
+}: ProductFormProps) {
   const {
     register,
     handleSubmit,
@@ -43,25 +59,27 @@ export function ProductForm({ product, categories, onClose, onSave }: ProductFor
           initialStock: product.initialStock,
         }
       : {
-          name: '',
-          sku: '',
-          category: '',
-          uom: '',
+          name: "",
+          sku: "",
+          category: "",
+          uom: "",
           initialStock: 0,
         },
-  })
+  });
 
-  const category = watch('category')
+  const category = watch("category");
 
   const onSubmit = async (data: ProductFormData) => {
-    await onSave(data)
-  }
+    await onSave(data);
+  };
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{product ? 'Edit Product' : 'Create Product'}</DialogTitle>
+          <DialogTitle>
+            {product ? "Edit Product" : "Create Product"}
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -69,8 +87,8 @@ export function ProductForm({ product, categories, onClose, onSave }: ProductFor
               <Label htmlFor="name">Product Name *</Label>
               <Input
                 id="name"
-                {...register('name')}
-                aria-invalid={errors.name ? 'true' : 'false'}
+                {...register("name")}
+                aria-invalid={errors.name ? "true" : "false"}
               />
               {errors.name && (
                 <p className="text-sm text-red-600" role="alert">
@@ -83,8 +101,8 @@ export function ProductForm({ product, categories, onClose, onSave }: ProductFor
               <Label htmlFor="sku">SKU *</Label>
               <Input
                 id="sku"
-                {...register('sku')}
-                aria-invalid={errors.sku ? 'true' : 'false'}
+                {...register("sku")}
+                aria-invalid={errors.sku ? "true" : "false"}
               />
               {errors.sku && (
                 <p className="text-sm text-red-600" role="alert">
@@ -99,7 +117,7 @@ export function ProductForm({ product, categories, onClose, onSave }: ProductFor
               <Label htmlFor="category">Category *</Label>
               <Select
                 value={category}
-                onValueChange={(value) => setValue('category', value)}
+                onValueChange={(value) => setValue("category", value)}
               >
                 <SelectTrigger id="category">
                   <SelectValue placeholder="Select category" />
@@ -107,7 +125,9 @@ export function ProductForm({ product, categories, onClose, onSave }: ProductFor
                 <SelectContent>
                   {categories.map((cat) => (
                     <SelectItem key={cat.id} value={cat.name}>
-                      {cat.name}
+                      {cat.name
+                        .replace(/_/g, " ")
+                        .replace(/\b\w/g, (l) => l.toUpperCase())}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -123,9 +143,9 @@ export function ProductForm({ product, categories, onClose, onSave }: ProductFor
               <Label htmlFor="uom">Unit of Measure *</Label>
               <Input
                 id="uom"
-                {...register('uom')}
+                {...register("uom")}
                 placeholder="e.g., Unit, Box, Kg"
-                aria-invalid={errors.uom ? 'true' : 'false'}
+                aria-invalid={errors.uom ? "true" : "false"}
               />
               {errors.uom && (
                 <p className="text-sm text-red-600" role="alert">
@@ -140,8 +160,8 @@ export function ProductForm({ product, categories, onClose, onSave }: ProductFor
             <Input
               id="initialStock"
               type="number"
-              {...register('initialStock', { valueAsNumber: true })}
-              aria-invalid={errors.initialStock ? 'true' : 'false'}
+              {...register("initialStock", { valueAsNumber: true })}
+              aria-invalid={errors.initialStock ? "true" : "false"}
             />
             {errors.initialStock && (
               <p className="text-sm text-red-600" role="alert">
@@ -155,12 +175,11 @@ export function ProductForm({ product, categories, onClose, onSave }: ProductFor
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Saving...' : product ? 'Update' : 'Create'}
+              {isSubmitting ? "Saving..." : product ? "Update" : "Create"}
             </Button>
           </div>
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
-

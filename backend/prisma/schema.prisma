@@ -34,6 +34,14 @@ enum DocumentType {
   ADJUSTMENT
 }
 
+enum ProductCategory {
+  ELECTRONICS
+  FURNITURE
+  FOOD_BEVERAGE
+  CLOTHING
+  RAW_MATERIALS
+}
+
 model User {
   id           String   @id @default(uuid())
   name         String
@@ -84,13 +92,13 @@ model Location {
 }
 
 model Product {
-  id           String     @id @default(uuid())
+  id           String          @id @default(uuid())
   name         String
-  sku          String     @unique
-  category     String?
+  sku          String          @unique
+  category     ProductCategory?
   uom          String?
-  isActive     Boolean    @default(true)
-  initialStock Int        @default(0)
+  isActive     Boolean         @default(true)
+  initialStock Int             @default(0)
   stockQuants  StockQuant[]
   receiptLines ReceiptLine[]
   deliveryLines DeliveryLine[]

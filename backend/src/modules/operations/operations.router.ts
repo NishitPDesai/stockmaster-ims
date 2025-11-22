@@ -4,6 +4,9 @@ import { requireAuth, requireRole } from "../../middleware/auth";
 
 const router = Router();
 
+// List all operations (unified view)
+router.get("/", requireAuth, controller.listAllOperations);
+
 // Receipts
 router.get("/receipts", requireAuth, controller.listReceipts);
 router.get("/receipts/:id", requireAuth, controller.getReceipt);
