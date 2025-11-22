@@ -7,15 +7,24 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Product } from '@/types'
-import { Plus, Search } from 'lucide-react'
+import { Plus, Search, Download, Trash2 } from 'lucide-react'
 import { ProductForm } from '@/components/forms/ProductForm'
+import { exportToCSV } from '@/lib/export'
+import { hasPermission, canDelete } from '@/lib/permissions'
+import { deleteProduct } from '@/store/slices/productSlice'
+import { toast } from '@/lib/toast'
 
 export function Products() {
   const dispatch = useAppDispatch()
   const { items, isLoading, filters } = useAppSelector((state) => state.products)
   const { items: categories } = useAppSelector((state) => state.categories)
+  const user = useAppSelector((state) => state.auth.user)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+
+  const canCreate = hasPermission(user, 'products.create')
+  const canEdit = hasPermission(user, 'products.edit')
+  const canDeleteProducts = canDelete(user, 'product')
 
   useEffect(() => {
     try {
@@ -63,6 +72,23 @@ export function Products() {
         return <span>{totalStock}</span>
       },
     },
+    ...(canDeleteProducts ? [{
+      key: 'actions',
+      header: 'Actions',
+      cell: (row: Product) => (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={(e) => {
+            e.stopPropagation()
+            handleDelete(row.id)
+          }}
+          title="Delete"
+        >
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
+      ),
+    }] : []),
   ]
 
   const handleCreate = () => {
@@ -71,15 +97,34 @@ export function Products() {
   }
 
   const handleEdit = (product: Product) => {
-    setSelectedProduct(product)
-    setIsFormOpen(true)
+    if (canEdit) {
+      setSelectedProduct(product)
+      setIsFormOpen(true)
+    }
   }
 
-  // const handleDelete = async (id: string) => {
-  //   if (window.confirm('Are you sure you want to delete this product?')) {
-  //     await dispatch(deleteProduct(id))
-  //   }
-  // }
+  const handleDelete = async (id: string) => {
+    if (canDeleteProducts && window.confirm('Are you sure you want to delete this product?')) {
+      try {
+        await dispatch(deleteProduct(id)).unwrap()
+        toast('Product deleted successfully', 'success')
+      } catch (error) {
+        toast('Failed to delete product', 'error')
+      }
+    }
+  }
+
+  const handleExport = () => {
+    const exportData = filteredProducts.map((p) => ({
+      SKU: p.sku,
+      'Product Name': p.name,
+      Category: p.category,
+      UOM: p.uom,
+      'Total Stock': Object.values(p.stockPerWarehouse || {}).reduce((sum, qty) => sum + qty, 0),
+    }))
+    exportToCSV(exportData, 'products')
+    toast('Products exported successfully', 'success')
+  }
 
   return (
     <div className="space-y-6 p-6">
@@ -88,10 +133,18 @@ export function Products() {
           <h1 className="text-3xl font-bold">Products</h1>
           <p className="text-muted-foreground">Manage your product inventory</p>
         </div>
-        <Button onClick={handleCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Product
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExport}>
+            <Download className="mr-2 h-4 w-4" />
+            Export
+          </Button>
+          {canCreate && (
+            <Button onClick={handleCreate}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Product
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4">
@@ -127,7 +180,7 @@ export function Products() {
         data={filteredProducts}
         isLoading={isLoading}
         emptyMessage="No products found"
-        onRowClick={handleEdit}
+        onRowClick={canEdit ? handleEdit : undefined}
       />
 
       {isFormOpen && (
@@ -139,13 +192,19 @@ export function Products() {
             setSelectedProduct(null)
           }}
           onSave={async (data) => {
-            if (selectedProduct) {
-              await dispatch(updateProduct({ id: selectedProduct.id, data }))
-            } else {
-              await dispatch(createProduct(data))
+            try {
+              if (selectedProduct) {
+                await dispatch(updateProduct({ id: selectedProduct.id, data })).unwrap()
+                toast('Product updated successfully', 'success')
+              } else {
+                await dispatch(createProduct(data)).unwrap()
+                toast('Product created successfully', 'success')
+              }
+              setIsFormOpen(false)
+              setSelectedProduct(null)
+            } catch (error) {
+              toast('Failed to save product', 'error')
             }
-            setIsFormOpen(false)
-            setSelectedProduct(null)
           }}
         />
       )}

@@ -79,6 +79,24 @@ export const updateOperation = createAsyncThunk(
   }
 )
 
+export const changeOperationStatus = createAsyncThunk(
+  'operations/changeStatus',
+  async (
+    { id, status }: { id: string; status: OperationStatus },
+    { rejectWithValue }
+  ) => {
+    try {
+      if (USE_MOCK) {
+        return mockOperations.update(id, { status })
+      }
+      const response = await apiClient.patch<Operation>(`/operations/${id}`, { status })
+      return response.data
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to change operation status')
+    }
+  }
+)
+
 const operationSlice = createSlice({
   name: 'operations',
   initialState,

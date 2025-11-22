@@ -48,7 +48,12 @@ export interface CreateOperationDto {
 
 export interface UpdateOperationDto {
   status?: OperationStatus
-  lineItems?: OperationLineItem[]
+  warehouseId?: string
+  sourceWarehouseId?: string
+  destinationWarehouseId?: string
+  supplierId?: string
+  customerId?: string
+  lineItems?: Omit<OperationLineItem, 'id' | 'productName' | 'productSku'>[]
   notes?: string
 }
 
