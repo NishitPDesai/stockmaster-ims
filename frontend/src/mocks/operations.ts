@@ -37,8 +37,8 @@ const mockOperationsData: Operation[] = [
   {
     id: '2',
     documentType: DocumentType.DELIVERY,
-    status: OperationStatus.READY,
-    documentNumber: 'WH/OUT/0001',
+    status: OperationStatus.DONE,
+    documentNumber: 'DO-1763798983485',
     warehouseId: '1',
     warehouseName: 'Main Warehouse',
     warehouseCode: 'WH',
@@ -46,8 +46,8 @@ const mockOperationsData: Operation[] = [
     customerName: 'Customer A',
     responsible: '1',
     responsibleName: 'Manager User',
-    deliveryAddress: '123 Customer St',
-    scheduleDate: new Date(Date.now() + 86400000).toISOString().split('T')[0], // Tomorrow
+    deliveryAddress: '123 Customer St, City, Country',
+    scheduleDate: new Date(Date.now() - 86400000).toISOString().split('T')[0], // Yesterday
     lineItems: [
       {
         id: '2',
@@ -60,9 +60,11 @@ const mockOperationsData: Operation[] = [
         totalPrice: 999.95,
       },
     ],
-    createdAt: new Date(Date.now() - 3600000).toISOString(),
-    updatedAt: new Date(Date.now() - 3600000).toISOString(),
+    createdAt: new Date(Date.now() - 86400000).toISOString(),
+    updatedAt: new Date(Date.now() - 86400000).toISOString(),
     createdBy: '1',
+    validatedAt: new Date(Date.now() - 86400000).toISOString(),
+    validatedBy: '1',
   },
   {
     id: '3',

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAppSelector, useAppDispatch } from '@/store/hooks'
-import { fetchOperations, setFilters, changeOperationStatus, setSelectedOperation, updateOperation, createOperation } from '@/store/slices/operationSlice'
+import { fetchOperations, setFilters, changeOperationStatus, setSelectedOperation, updateOperation, createOperation, fetchOperationById } from '@/store/slices/operationSlice'
 import { fetchWarehouses } from '@/store/slices/warehouseSlice'
 import { fetchProducts } from '@/store/slices/productSlice'
 import { DataTable, Column } from '@/components/common/DataTable'
@@ -58,8 +58,15 @@ export function Deliveries() {
     )
   })
 
-  const handleViewDetails = (operation: Operation) => {
-    dispatch(setSelectedOperation(operation));
+  const handleViewDetails = async (operation: Operation) => {
+    // Fetch full operation details to ensure we have all data including lineItems
+    try {
+      const fullOperation = await dispatch(fetchOperationById(operation.id)).unwrap();
+      dispatch(setSelectedOperation(fullOperation));
+    } catch (error) {
+      // If fetch fails, use the operation from the list
+      dispatch(setSelectedOperation(operation));
+    }
   };
 
   const handleEdit = (operation: Operation) => {

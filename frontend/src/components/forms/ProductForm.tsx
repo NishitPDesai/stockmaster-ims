@@ -26,6 +26,7 @@ const productSchema = z.object({
   category: z.string().min(1, "Category is required"),
   uom: z.string().min(1, "Unit of measure is required"),
   initialStock: z.number().min(0, "Initial stock must be 0 or greater"),
+  unitCost: z.number().min(0, "Unit cost must be 0 or greater").optional(),
 });
 
 type ProductFormData = z.infer<typeof productSchema>;
@@ -58,6 +59,7 @@ export function ProductForm({
           category: product.category,
           uom: product.uom,
           initialStock: product.initialStock,
+          unitCost: product.unitCost,
         }
       : {
           name: "",
@@ -65,6 +67,7 @@ export function ProductForm({
           category: "",
           uom: "",
           initialStock: 0,
+          unitCost: undefined,
         },
   });
 
@@ -159,19 +162,38 @@ export function ProductForm({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="initialStock">Initial Stock</Label>
-            <Input
-              id="initialStock"
-              type="number"
-              {...register("initialStock", { valueAsNumber: true })}
-              aria-invalid={errors.initialStock ? "true" : "false"}
-            />
-            {errors.initialStock && (
-              <p className="text-sm text-red-600" role="alert">
-                {errors.initialStock.message}
-              </p>
-            )}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="initialStock">Initial Stock</Label>
+              <Input
+                id="initialStock"
+                type="number"
+                {...register("initialStock", { valueAsNumber: true })}
+                aria-invalid={errors.initialStock ? "true" : "false"}
+              />
+              {errors.initialStock && (
+                <p className="text-sm text-red-600" role="alert">
+                  {errors.initialStock.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="unitCost">Per Unit Cost (Rs)</Label>
+              <Input
+                id="unitCost"
+                type="number"
+                step="0.01"
+                {...register("unitCost", { valueAsNumber: true })}
+                placeholder="0.00"
+                aria-invalid={errors.unitCost ? "true" : "false"}
+              />
+              {errors.unitCost && (
+                <p className="text-sm text-red-600" role="alert">
+                  {errors.unitCost.message}
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-4">

@@ -106,11 +106,35 @@ export const restoreAuth = createAsyncThunk(
       }
 
       if (USE_MOCK) {
+        // In mock mode, restore from localStorage
+        const storedUser = getStoredUser();
+        const storedToken = getAuthToken();
+        const storedRefreshToken = getRefreshToken();
+        
+        if (storedUser && storedToken) {
+          return {
+            user: storedUser,
+            token: storedToken,
+            refreshToken: storedRefreshToken || null,
+          };
+        }
+        
+        // If no stored auth, try refresh (for backward compatibility)
         const response = await mockAuth.refresh();
+        setStoredUser(response.user);
+        setAuthToken(response.token);
+        if (response.refreshToken) {
+          setRefreshToken(response.refreshToken);
+        }
         return response;
       }
 
       // Use /auth/me endpoint to verify token and get current user
+      const token = getAuthToken();
+      if (!token) {
+        throw new Error("No token found");
+      }
+
       const response = await apiClient.get<{ success: boolean; user: User }>(
         "/auth/me"
       );
@@ -193,7 +217,9 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.user = action.payload.user;
         state.token = action.payload.token;
+        state.token = action.payload.token;
         state.isAuthenticated = true;
+        state.error = null;
         state.error = null;
       })
       .addCase(restoreAuth.rejected, (state) => {

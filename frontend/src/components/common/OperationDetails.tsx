@@ -194,64 +194,68 @@ export function OperationDetails({
             <label className="text-sm font-medium text-muted-foreground mb-2 block">
               Line Items
             </label>
-            <div className="border rounded-lg overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-muted">
-                  <tr>
-                    <th className="px-4 py-2 text-left text-sm font-medium">
-                      Product
-                    </th>
-                    <th className="px-4 py-2 text-left text-sm font-medium">
-                      SKU
-                    </th>
-                    <th className="px-4 py-2 text-right text-sm font-medium">
-                      Quantity
-                    </th>
-                    <th className="px-4 py-2 text-left text-sm font-medium">
-                      UOM
-                    </th>
-                    {operation.lineItems.some((item) => item.unitPrice) && (
-                      <>
-                        <th className="px-4 py-2 text-right text-sm font-medium">
-                          Unit Price
-                        </th>
-                        <th className="px-4 py-2 text-right text-sm font-medium">
-                          Total
-                        </th>
-                      </>
-                    )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {operation.lineItems.map((item) => (
-                    <tr key={item.id} className="border-t">
-                      <td className="px-4 py-2 text-sm">{item.productName}</td>
-                      <td className="px-4 py-2 text-sm font-mono">
-                        {item.productSku}
-                      </td>
-                      <td className="px-4 py-2 text-sm text-right">
-                        {item.quantity}
-                      </td>
-                      <td className="px-4 py-2 text-sm">{item.uom}</td>
-                      {operation.lineItems.some((i) => i.unitPrice) && (
+            {operation.lineItems && operation.lineItems.length > 0 ? (
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-muted">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-sm font-medium">
+                        Product
+                      </th>
+                      <th className="px-4 py-2 text-left text-sm font-medium">
+                        SKU
+                      </th>
+                      <th className="px-4 py-2 text-right text-sm font-medium">
+                        Quantity
+                      </th>
+                      <th className="px-4 py-2 text-left text-sm font-medium">
+                        UOM
+                      </th>
+                      {operation.lineItems.some((item) => item.unitPrice) && (
                         <>
-                          <td className="px-4 py-2 text-sm text-right">
-                            {item.unitPrice
-                              ? `$${item.unitPrice.toFixed(2)}`
-                              : "-"}
-                          </td>
-                          <td className="px-4 py-2 text-sm text-right">
-                            {item.totalPrice
-                              ? `$${item.totalPrice.toFixed(2)}`
-                              : "-"}
-                          </td>
+                          <th className="px-4 py-2 text-right text-sm font-medium">
+                            Unit Price
+                          </th>
+                          <th className="px-4 py-2 text-right text-sm font-medium">
+                            Total
+                          </th>
                         </>
                       )}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {operation.lineItems.map((item) => (
+                      <tr key={item.id} className="border-t">
+                        <td className="px-4 py-2 text-sm">{item.productName || '-'}</td>
+                        <td className="px-4 py-2 text-sm font-mono">
+                          {item.productSku || '-'}
+                        </td>
+                        <td className="px-4 py-2 text-sm text-right">
+                          {item.quantity}
+                        </td>
+                        <td className="px-4 py-2 text-sm">{item.uom || '-'}</td>
+                        {operation.lineItems.some((i) => i.unitPrice) && (
+                          <>
+                            <td className="px-4 py-2 text-sm text-right">
+                              {item.unitPrice
+                                ? `$${item.unitPrice.toFixed(2)}`
+                                : "-"}
+                            </td>
+                            <td className="px-4 py-2 text-sm text-right">
+                              {item.totalPrice
+                                ? `$${item.totalPrice.toFixed(2)}`
+                                : "-"}
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground py-4">No line items found</p>
+            )}
           </div>
 
           {/* Notes */}

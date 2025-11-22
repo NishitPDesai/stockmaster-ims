@@ -24,7 +24,7 @@ const mockLedgerData: MoveLog[] = [
     id: '2',
     documentType: DocumentType.DELIVERY,
     documentId: '2',
-    documentNumber: 'DEL-001',
+    documentNumber: 'DO-1763798983485',
     productId: '2',
     productName: 'Office Chair',
     productSku: 'CHR-001',
@@ -34,8 +34,8 @@ const mockLedgerData: MoveLog[] = [
     quantityBefore: 65,
     quantityAfter: 60,
     movementType: 'OUT',
-    status: OperationStatus.READY,
-    createdAt: new Date(Date.now() - 3600000).toISOString(),
+    status: OperationStatus.DONE,
+    createdAt: new Date(Date.now() - 86400000).toISOString(),
     createdBy: '1',
   },
   {
@@ -74,6 +74,20 @@ export const mockLedger = {
     }
     if (filters?.movementType) {
       filtered = filtered.filter((l) => l.movementType === filters.movementType)
+    }
+    if (filters?.dateFrom && filters.dateFrom.trim() !== '') {
+      const dateFrom = new Date(filters.dateFrom)
+      if (!isNaN(dateFrom.getTime())) {
+        filtered = filtered.filter((l) => new Date(l.createdAt) >= dateFrom)
+      }
+    }
+    if (filters?.dateTo && filters.dateTo.trim() !== '') {
+      const dateTo = new Date(filters.dateTo)
+      if (!isNaN(dateTo.getTime())) {
+        // Set to end of day
+        dateTo.setHours(23, 59, 59, 999)
+        filtered = filtered.filter((l) => new Date(l.createdAt) <= dateTo)
+      }
     }
 
     return filtered
