@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
-import { User, LoginCredentials, AuthResponse } from '@/types'
+import { User, LoginCredentials, RegisterCredentials, AuthResponse } from '@/types'
 import { apiClient, USE_MOCK } from '@/lib/api'
 import { setStoredUser, clearStoredAuth, setAuthToken, setRefreshToken } from '@/lib/auth'
 import { mockAuth } from '@/mocks/auth'
@@ -40,6 +40,29 @@ export const login = createAsyncThunk(
       return { user, token, refreshToken }
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Login failed')
+    }
+  }
+)
+
+export const register = createAsyncThunk(
+  'auth/register',
+  async (credentials: RegisterCredentials, { rejectWithValue }) => {
+    try {
+      if (USE_MOCK) {
+        const response = await mockAuth.register(credentials)
+        return response
+      }
+
+      const response = await apiClient.post<AuthResponse>('/auth/register', credentials)
+      const { user, token, refreshToken } = response.data
+
+      setStoredUser(user)
+      setAuthToken(token)
+      setRefreshToken(refreshToken)
+
+      return { user, token, refreshToken }
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Registration failed')
     }
   }
 )
@@ -114,6 +137,23 @@ const authSlice = createSlice({
         state.error = null
       })
       .addCase(login.rejected, (state, action) => {
+        state.isLoading = false
+        state.error = action.payload as string
+        state.isAuthenticated = false
+      })
+      // Register
+      .addCase(register.pending, (state) => {
+        state.isLoading = true
+        state.error = null
+      })
+      .addCase(register.fulfilled, (state, action) => {
+        state.isLoading = false
+        state.user = action.payload.user
+        state.token = action.payload.token
+        state.isAuthenticated = true
+        state.error = null
+      })
+      .addCase(register.rejected, (state, action) => {
         state.isLoading = false
         state.error = action.payload as string
         state.isAuthenticated = false

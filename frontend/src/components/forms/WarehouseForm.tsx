@@ -55,41 +55,39 @@ export function WarehouseForm({ warehouse, onClose, onSave }: WarehouseFormProps
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{warehouse ? 'Edit Warehouse' : 'Create Warehouse'}</DialogTitle>
+          <DialogTitle>Warehouse</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Name *</Label>
-              <Input
-                id="name"
-                {...register('name')}
-                aria-invalid={errors.name ? 'true' : 'false'}
-              />
-              {errors.name && (
-                <p className="text-sm text-red-600" role="alert">
-                  {errors.name.message}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="code">Code *</Label>
-              <Input
-                id="code"
-                {...register('code')}
-                aria-invalid={errors.code ? 'true' : 'false'}
-              />
-              {errors.code && (
-                <p className="text-sm text-red-600" role="alert">
-                  {errors.code.message}
-                </p>
-              )}
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="name">Name:</Label>
+            <Input
+              id="name"
+              {...register('name')}
+              aria-invalid={errors.name ? 'true' : 'false'}
+            />
+            {errors.name && (
+              <p className="text-sm text-red-600" role="alert">
+                {errors.name.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="address">Address</Label>
+            <Label htmlFor="code">Short Code:</Label>
+            <Input
+              id="code"
+              {...register('code')}
+              aria-invalid={errors.code ? 'true' : 'false'}
+            />
+            {errors.code && (
+              <p className="text-sm text-red-600" role="alert">
+                {errors.code.message}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="address">Address:</Label>
             <Input id="address" {...register('address')} />
           </div>
 

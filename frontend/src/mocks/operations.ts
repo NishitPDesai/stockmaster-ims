@@ -1,16 +1,21 @@
 import { Operation, CreateOperationDto, UpdateOperationDto, OperationFilters } from '@/types'
 import { DocumentType, OperationStatus } from '@/types/Status'
+import { mockProductsData } from './products'
 
 const mockOperationsData: Operation[] = [
   {
     id: '1',
     documentType: DocumentType.RECEIPT,
     status: OperationStatus.DONE,
-    documentNumber: 'REC-001',
+    documentNumber: 'WH/IN/0001',
     warehouseId: '1',
     warehouseName: 'Main Warehouse',
+    warehouseCode: 'WH',
     supplierId: '1',
     supplierName: 'Supplier A',
+    responsible: '1',
+    responsibleName: 'Manager User',
+    scheduleDate: new Date(Date.now() - 86400000).toISOString().split('T')[0],
     lineItems: [
       {
         id: '1',
@@ -33,11 +38,16 @@ const mockOperationsData: Operation[] = [
     id: '2',
     documentType: DocumentType.DELIVERY,
     status: OperationStatus.READY,
-    documentNumber: 'DEL-001',
+    documentNumber: 'WH/OUT/0001',
     warehouseId: '1',
     warehouseName: 'Main Warehouse',
+    warehouseCode: 'WH',
     customerId: '1',
     customerName: 'Customer A',
+    responsible: '1',
+    responsibleName: 'Manager User',
+    deliveryAddress: '123 Customer St',
+    scheduleDate: new Date(Date.now() + 86400000).toISOString().split('T')[0], // Tomorrow
     lineItems: [
       {
         id: '2',
@@ -58,11 +68,16 @@ const mockOperationsData: Operation[] = [
     id: '3',
     documentType: DocumentType.TRANSFER,
     status: OperationStatus.WAITING,
-    documentNumber: 'TRF-001',
+    documentNumber: 'WH/TRF/0001',
     sourceWarehouseId: '1',
     sourceWarehouseName: 'Main Warehouse',
+    sourceWarehouseCode: 'WH',
     destinationWarehouseId: '2',
     destinationWarehouseName: 'Secondary Warehouse',
+    destinationWarehouseCode: 'WH2',
+    responsible: '1',
+    responsibleName: 'Manager User',
+    scheduleDate: new Date(Date.now() + 172800000).toISOString().split('T')[0], // Day after tomorrow
     lineItems: [
       {
         id: '3',
@@ -108,24 +123,45 @@ export const mockOperations = {
 
   create: async (data: CreateOperationDto): Promise<Operation> => {
     await new Promise((resolve) => setTimeout(resolve, 500))
-    const docTypePrefix = {
-      [DocumentType.RECEIPT]: 'REC',
-      [DocumentType.DELIVERY]: 'DEL',
+    
+    // Generate document number in format: WH/IN/0001 (Warehouse/Operation/ID)
+    const operationType = {
+      [DocumentType.RECEIPT]: 'IN',
+      [DocumentType.DELIVERY]: 'OUT',
       [DocumentType.TRANSFER]: 'TRF',
       [DocumentType.ADJUSTMENT]: 'ADJ',
     }[data.documentType]
+
+    // Get warehouse code (default to 'WH' if not found)
+    let warehouseCode = 'WH'
+    if (data.warehouseId) {
+      // In real app, fetch warehouse code from warehouse data
+      warehouseCode = 'WH' // Mock: use warehouse ID or fetch actual code
+    } else if (data.sourceWarehouseId) {
+      warehouseCode = 'WH' // Mock: use source warehouse code
+    }
+
+    const count = mockOperationsData.filter((o) => o.documentType === data.documentType).length
+    const documentNumber = `${warehouseCode}/${operationType}/${String(count + 1).padStart(4, '0')}`
 
     const newOperation: Operation = {
       id: String(mockOperationsData.length + 1),
       ...data,
       status: OperationStatus.DRAFT,
-      documentNumber: `${docTypePrefix}-${String(mockOperationsData.length + 1).padStart(3, '0')}`,
-      lineItems: data.lineItems.map((item, idx) => ({
-        id: String(idx + 1),
-        productName: 'Product Name',
-        productSku: 'SKU',
-        ...item,
-      })),
+      documentNumber,
+      warehouseCode,
+      responsible: data.responsible || '1',
+      responsibleName: 'Current User', // Mock: would fetch from user data
+      lineItems: data.lineItems.map((item, idx) => {
+        // Find product to get name and SKU
+        const product = mockProductsData.find((p) => p.id === item.productId)
+        return {
+          id: String(idx + 1),
+          productName: product?.name || 'Product Name',
+          productSku: product?.sku || 'SKU',
+          ...item,
+        }
+      }),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       createdBy: '1',
@@ -166,6 +202,9 @@ export const mockOperations = {
       ...(data.destinationWarehouseId !== undefined && { destinationWarehouseId: data.destinationWarehouseId }),
       ...(data.supplierId !== undefined && { supplierId: data.supplierId }),
       ...(data.customerId !== undefined && { customerId: data.customerId }),
+      ...(data.responsible !== undefined && { responsible: data.responsible }),
+      ...(data.scheduleDate !== undefined && { scheduleDate: data.scheduleDate }),
+      ...(data.deliveryAddress !== undefined && { deliveryAddress: data.deliveryAddress }),
       ...(data.status !== undefined && { status: data.status }),
       ...(data.notes !== undefined && { notes: data.notes }),
       lineItems,

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAppSelector, useAppDispatch } from '@/store/hooks'
-import { fetchOperations, setFilters, changeOperationStatus, setSelectedOperation, updateOperation } from '@/store/slices/operationSlice'
+import { fetchOperations, setFilters, changeOperationStatus, setSelectedOperation, updateOperation, createOperation } from '@/store/slices/operationSlice'
 import { fetchWarehouses } from '@/store/slices/warehouseSlice'
 import { fetchProducts } from '@/store/slices/productSlice'
 import { DataTable, Column } from '@/components/common/DataTable'
@@ -12,6 +12,7 @@ import { Plus, Download, Eye, Edit } from 'lucide-react'
 import { formatDateTime } from '@/lib/format'
 import { OperationForm } from '@/components/forms/OperationForm'
 import { OperationDetails } from '@/components/common/OperationDetails'
+import { StatusChangeDropdown } from '@/components/common/StatusChangeDropdown'
 import { exportToCSV } from '@/lib/export'
 import { hasPermission } from '@/lib/permissions'
 import { OperationStatus } from '@/types/Status'
@@ -33,6 +34,10 @@ export function Adjustments() {
 
   const canCreate = hasPermission(user, 'operations.create')
   const canEdit = hasPermission(user, 'operations.edit')
+  const canValidate = hasPermission(user, 'operations.validate')
+  const canComplete = hasPermission(user, 'operations.complete')
+  const canCancel = hasPermission(user, 'operations.cancel')
+  const isManager = user?.role === 'manager'
 
   const handleViewDetails = (operation: Operation) => {
     dispatch(setSelectedOperation(operation))
@@ -91,7 +96,16 @@ export function Adjustments() {
     {
       key: 'status',
       header: 'Status',
-      cell: (row) => <StatusBadge status={row.status} />,
+      cell: (row) => (
+        <StatusChangeDropdown
+          currentStatus={row.status}
+          onStatusChange={(newStatus) => handleStatusChange(row.id, newStatus)}
+          canValidate={canValidate}
+          canComplete={canComplete}
+          canCancel={canCancel}
+          isManager={isManager}
+        />
+      ),
     },
     {
       key: 'createdAt',
@@ -131,7 +145,6 @@ export function Adjustments() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Adjustments</h1>
-          <p className="text-muted-foreground">Manage stock count adjustments</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleExport}>
@@ -182,7 +195,7 @@ export function Adjustments() {
               await dispatch(updateOperation({ id: editingOperation.id, data })).unwrap()
               toast('Adjustment updated successfully', 'success')
             } else {
-              await dispatch(fetchOperations({ documentType: DocumentType.ADJUSTMENT }))
+              await dispatch(createOperation(data)).unwrap()
               toast('Adjustment created successfully', 'success')
             }
             await dispatch(fetchOperations({ documentType: DocumentType.ADJUSTMENT }))

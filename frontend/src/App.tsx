@@ -5,6 +5,7 @@ import { Sidebar } from './components/layout/Sidebar'
 import { Topbar } from './components/layout/Topbar'
 import { ProtectedRoute } from './components/routing/ProtectedRoute'
 import { Login } from './pages/Login'
+import { Register } from './pages/Register'
 import { Dashboard } from './pages/Dashboard'
 import { Products } from './pages/Products'
 import { Receipts } from './pages/operations/Receipts'
@@ -21,9 +22,9 @@ import { ToastContainer } from './lib/toast'
 function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
+      <Topbar />
       <Sidebar />
-      <div className="lg:pl-64">
-        <Topbar />
+      <div className="pt-14">
         <main className="min-h-screen">{children}</main>
       </div>
     </div>
@@ -37,6 +38,7 @@ function App() {
         <BrowserRouter>
           <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
           <Route
             path="/"
             element={

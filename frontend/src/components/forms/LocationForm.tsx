@@ -58,11 +58,39 @@ export function LocationForm({ location, warehouses, onClose, onSave }: Location
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{location ? 'Edit Location' : 'Create Location'}</DialogTitle>
+          <DialogTitle>location</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="warehouseId">Warehouse *</Label>
+            <Label htmlFor="name">Name:</Label>
+            <Input
+              id="name"
+              {...register('name')}
+              aria-invalid={errors.name ? 'true' : 'false'}
+            />
+            {errors.name && (
+              <p className="text-sm text-red-600" role="alert">
+                {errors.name.message}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="code">Short Code:</Label>
+            <Input
+              id="code"
+              {...register('code')}
+              aria-invalid={errors.code ? 'true' : 'false'}
+            />
+            {errors.code && (
+              <p className="text-sm text-red-600" role="alert">
+                {errors.code.message}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="warehouseId">warehouse:</Label>
             <Select
               value={warehouseId}
               onValueChange={(value) => setValue('warehouseId', value)}
@@ -83,36 +111,6 @@ export function LocationForm({ location, warehouses, onClose, onSave }: Location
                 {errors.warehouseId.message}
               </p>
             )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Name *</Label>
-              <Input
-                id="name"
-                {...register('name')}
-                aria-invalid={errors.name ? 'true' : 'false'}
-              />
-              {errors.name && (
-                <p className="text-sm text-red-600" role="alert">
-                  {errors.name.message}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="code">Code *</Label>
-              <Input
-                id="code"
-                {...register('code')}
-                aria-invalid={errors.code ? 'true' : 'false'}
-              />
-              {errors.code && (
-                <p className="text-sm text-red-600" role="alert">
-                  {errors.code.message}
-                </p>
-              )}
-            </div>
           </div>
 
           <div className="space-y-2">

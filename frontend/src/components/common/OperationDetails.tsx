@@ -105,13 +105,33 @@ export function OperationDetails({ operation, onClose, onStatusChange }: Operati
             </div>
           )}
 
-          {/* Supplier/Customer */}
-          {(operation.supplierName || operation.customerName) && (
+          {/* Receive From / Delivery Address */}
+          {operation.documentType === 'RECEIPT' && operation.supplierName && (
             <div>
-              <label className="text-sm font-medium text-muted-foreground">
-                {operation.supplierName ? 'Supplier' : 'Customer'}
-              </label>
-              <p className="text-sm">{operation.supplierName || operation.customerName || '-'}</p>
+              <label className="text-sm font-medium text-muted-foreground">Receive From</label>
+              <p className="text-sm">{operation.supplierName}</p>
+            </div>
+          )}
+          {operation.documentType === 'DELIVERY' && operation.deliveryAddress && (
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Delivery Address</label>
+              <p className="text-sm">{operation.deliveryAddress}</p>
+            </div>
+          )}
+
+          {/* Responsible */}
+          {operation.responsibleName && (
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Responsible</label>
+              <p className="text-sm">{operation.responsibleName}</p>
+            </div>
+          )}
+
+          {/* Schedule Date */}
+          {operation.scheduleDate && (
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Schedule Date</label>
+              <p className="text-sm">{formatDate(operation.scheduleDate)}</p>
             </div>
           )}
 
