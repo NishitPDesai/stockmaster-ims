@@ -1,91 +1,118 @@
-import { useEffect, useState } from 'react'
-import { useAppSelector, useAppDispatch } from '@/store/hooks'
-import { fetchOperations, setFilters, changeOperationStatus, setSelectedOperation, updateOperation, createOperation, fetchOperationById } from '@/store/slices/operationSlice'
-import { fetchWarehouses } from '@/store/slices/warehouseSlice'
-import { fetchProducts } from '@/store/slices/productSlice'
-import { DataTable, Column } from '@/components/common/DataTable'
-import { FilterBar } from '@/components/common/FilterBar'
-import { Button } from '@/components/ui/button'
-import { StatusBadge } from '@/components/common/StatusBadge'
-import { Operation, DocumentType } from '@/types'
-import { Plus, Download, Eye, Edit } from 'lucide-react'
-import { formatDateTime } from '@/lib/format'
-import { OperationForm } from '@/components/forms/OperationForm'
-import { OperationDetails } from '@/components/common/OperationDetails'
-import { StatusChangeDropdown } from '@/components/common/StatusChangeDropdown'
-import { exportToCSV } from '@/lib/export'
-import { hasPermission } from '@/lib/permissions'
-import { OperationStatus } from '@/types/Status'
-import { toast } from '@/lib/toast'
+import { useEffect, useState } from "react";
+import { useAppSelector, useAppDispatch } from "@/store/hooks";
+import {
+  fetchOperations,
+  setFilters,
+  changeOperationStatus,
+  setSelectedOperation,
+  updateOperation,
+  createOperation,
+  fetchOperationById,
+} from "@/store/slices/operationSlice";
+import { fetchWarehouses } from "@/store/slices/warehouseSlice";
+import { fetchProducts } from "@/store/slices/productSlice";
+import { DataTable, Column } from "@/components/common/DataTable";
+import { FilterBar } from "@/components/common/FilterBar";
+import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/common/StatusBadge";
+import { Operation, DocumentType } from "@/types";
+import { Plus, Download, Eye, Edit } from "lucide-react";
+import { formatDateTime } from "@/lib/format";
+import { OperationForm } from "@/components/forms/OperationForm";
+import { OperationDetails } from "@/components/common/OperationDetails";
+import { StatusChangeDropdown } from "@/components/common/StatusChangeDropdown";
+import { exportToCSV } from "@/lib/export";
+import { hasPermission } from "@/lib/permissions";
+import { OperationStatus } from "@/types/Status";
+import { toast } from "@/lib/toast";
 
 export function Adjustments() {
-  const dispatch = useAppDispatch()
-  const { items, isLoading, filters, selectedOperation } = useAppSelector((state) => state.operations)
-  const { warehouses } = useAppSelector((state) => state.warehouses)
-  const user = useAppSelector((state) => state.auth.user)
-  const [isFormOpen, setIsFormOpen] = useState(false)
-  const [editingOperation, setEditingOperation] = useState<Operation | null>(null)
+  const dispatch = useAppDispatch();
+  const { items, isLoading, filters, selectedOperation } = useAppSelector(
+    (state) => state.operations
+  );
+  const { warehouses } = useAppSelector((state) => state.warehouses);
+  const user = useAppSelector((state) => state.auth.user);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingOperation, setEditingOperation] = useState<Operation | null>(
+    null
+  );
 
   useEffect(() => {
-    dispatch(fetchWarehouses())
-    dispatch(fetchProducts())
-    dispatch(fetchOperations({ documentType: DocumentType.ADJUSTMENT }))
-  }, [dispatch])
+    dispatch(fetchWarehouses());
+    dispatch(fetchProducts());
+    dispatch(fetchOperations({ documentType: DocumentType.ADJUSTMENT }));
+  }, [dispatch]);
 
-  const canCreate = hasPermission(user, 'operations.create')
-  const canEdit = hasPermission(user, 'operations.edit')
-  const canValidate = hasPermission(user, 'operations.validate')
-  const canComplete = hasPermission(user, 'operations.complete')
-  const canCancel = hasPermission(user, 'operations.cancel')
-  const isManager = user?.role === 'manager'
+  const canCreate = hasPermission(user, "operations.create");
+  const canEdit = hasPermission(user, "operations.edit");
+  const canValidate = hasPermission(user, "operations.validate");
+  const canComplete = hasPermission(user, "operations.complete");
+  const canCancel = hasPermission(user, "operations.cancel");
+  const isManager = user?.role === "manager";
 
   const handleViewDetails = async (operation: Operation) => {
     // Fetch full operation details to ensure we have all data including lineItems
     try {
-      const fullOperation = await dispatch(fetchOperationById(operation.id)).unwrap();
+      const fullOperation = await dispatch(
+        fetchOperationById({
+          id: operation.id,
+          documentType: DocumentType.ADJUSTMENT,
+        })
+      ).unwrap();
       dispatch(setSelectedOperation(fullOperation));
     } catch (error) {
       // If fetch fails, use the operation from the list
       dispatch(setSelectedOperation(operation));
     }
-  }
+  };
 
   const handleEdit = (operation: Operation) => {
     if (operation.status === OperationStatus.DRAFT && canEdit) {
-      setEditingOperation(operation)
-      setIsFormOpen(true)
+      setEditingOperation(operation);
+      setIsFormOpen(true);
     }
-  }
+  };
 
   const handleStatusChange = async (id: string, status: OperationStatus) => {
     try {
-      await dispatch(changeOperationStatus({ id, status, documentType: DocumentType.ADJUSTMENT })).unwrap()
-      await dispatch(fetchOperations({ documentType: DocumentType.ADJUSTMENT }))
-      dispatch(setSelectedOperation(null))
-      toast(`Operation status changed to ${status}`, 'success')
+      await dispatch(
+        changeOperationStatus({
+          id,
+          status,
+          documentType: DocumentType.ADJUSTMENT,
+        })
+      ).unwrap();
+      await dispatch(
+        fetchOperations({ documentType: DocumentType.ADJUSTMENT })
+      );
+      dispatch(setSelectedOperation(null));
+      toast(`Operation status changed to ${status}`, "success");
     } catch (error) {
-      toast('Failed to change operation status', 'error')
+      toast("Failed to change operation status", "error");
     }
-  }
+  };
 
   const handleExport = () => {
     const exportData = adjustments.map((a) => ({
-      'Document Number': a.documentNumber,
-      'Warehouse': a.warehouseName || '',
-      'Status': a.status,
-      'Created': formatDateTime(a.createdAt),
-      'Line Items': a.lineItems.length,
-    }))
-    exportToCSV(exportData, 'adjustments')
-    toast('Adjustments exported successfully', 'success')
-  }
+      "Document Number": a.documentNumber,
+      Warehouse: a.warehouseName || "",
+      Status: a.status,
+      Created: formatDateTime(a.createdAt),
+      "Line Items": a.lineItems.length,
+    }));
+    exportToCSV(exportData, "adjustments");
+    toast("Adjustments exported successfully", "success");
+  };
 
-  const adjustments = (items || []).filter((o) => o.documentType === DocumentType.ADJUSTMENT)
+  const adjustments = (items || []).filter(
+    (o) => o.documentType === DocumentType.ADJUSTMENT
+  );
 
   const columns: Column<Operation>[] = [
     {
-      key: 'documentNumber',
-      header: 'Document #',
+      key: "documentNumber",
+      header: "Document #",
       cell: (row) => (
         <button
           onClick={() => handleViewDetails(row)}
@@ -96,13 +123,13 @@ export function Adjustments() {
       ),
     },
     {
-      key: 'warehouse',
-      header: 'Warehouse',
-      cell: (row) => row.warehouseName || '-',
+      key: "warehouse",
+      header: "Warehouse",
+      cell: (row) => row.warehouseName || "-",
     },
     {
-      key: 'status',
-      header: 'Status',
+      key: "status",
+      header: "Status",
       cell: (row) => (
         <StatusChangeDropdown
           currentStatus={row.status}
@@ -115,13 +142,13 @@ export function Adjustments() {
       ),
     },
     {
-      key: 'createdAt',
-      header: 'Created',
+      key: "createdAt",
+      header: "Created",
       cell: (row) => formatDateTime(row.createdAt),
     },
     {
-      key: 'actions',
-      header: 'Actions',
+      key: "actions",
+      header: "Actions",
       cell: (row) => (
         <div className="flex gap-2">
           <Button
@@ -145,7 +172,7 @@ export function Adjustments() {
         </div>
       ),
     },
-  ]
+  ];
 
   return (
     <div className="space-y-6 p-6">
@@ -159,10 +186,12 @@ export function Adjustments() {
             Export
           </Button>
           {canCreate && (
-            <Button onClick={() => {
-              setEditingOperation(null)
-              setIsFormOpen(true)
-            }}>
+            <Button
+              onClick={() => {
+                setEditingOperation(null);
+                setIsFormOpen(true);
+              }}
+            >
               <Plus className="mr-2 h-4 w-4" />
               New Adjustment
             </Button>
@@ -173,8 +202,14 @@ export function Adjustments() {
       <FilterBar
         filters={filters}
         onFiltersChange={(newFilters) => {
-          dispatch(setFilters(newFilters))
-          dispatch(fetchOperations({ ...filters, ...newFilters, documentType: DocumentType.ADJUSTMENT }))
+          dispatch(setFilters(newFilters));
+          dispatch(
+            fetchOperations({
+              ...filters,
+              ...newFilters,
+              documentType: DocumentType.ADJUSTMENT,
+            })
+          );
         }}
         warehouses={warehouses || []}
         showDocumentType={false}
@@ -194,20 +229,28 @@ export function Adjustments() {
           warehouses={warehouses || []}
           operation={editingOperation}
           onClose={() => {
-            setIsFormOpen(false)
-            setEditingOperation(null)
+            setIsFormOpen(false);
+            setEditingOperation(null);
           }}
           onSave={async (data) => {
             if (editingOperation) {
-              await dispatch(updateOperation({ id: editingOperation.id, data })).unwrap()
-              toast('Adjustment updated successfully', 'success')
+              await dispatch(
+                updateOperation({
+                  id: editingOperation.id,
+                  data,
+                  documentType: DocumentType.ADJUSTMENT,
+                })
+              ).unwrap();
+              toast("Adjustment updated successfully", "success");
             } else {
-              await dispatch(createOperation(data)).unwrap()
-              toast('Adjustment created successfully', 'success')
+              await dispatch(createOperation(data)).unwrap();
+              toast("Adjustment created successfully", "success");
             }
-            await dispatch(fetchOperations({ documentType: DocumentType.ADJUSTMENT }))
-            setIsFormOpen(false)
-            setEditingOperation(null)
+            await dispatch(
+              fetchOperations({ documentType: DocumentType.ADJUSTMENT })
+            );
+            setIsFormOpen(false);
+            setEditingOperation(null);
           }}
         />
       )}
@@ -220,6 +263,5 @@ export function Adjustments() {
         />
       )}
     </div>
-  )
+  );
 }
-

@@ -7,6 +7,7 @@ function transformOperation(operation: any, type: string) {
     ...operation,
     documentType: type,
     documentNumber: operation.code,
+    scheduleDate: operation.scheduledDate,
     lineItems:
       operation.lines?.map((line: any) => ({
         id: line.id,
@@ -259,23 +260,34 @@ export async function createReceipt(
   });
 }
 
-export async function updateReceipt(
-  id: string,
-  data: Partial<{
-    supplierName: string;
-    scheduledDate: string;
-    status: OperationStatus;
-  }>
-) {
-  return prisma.receipt.update({
+export async function updateReceipt(id: string, data: any) {
+  // Filter only valid Receipt model fields
+  const updateData: any = {};
+
+  if (data.supplierName !== undefined)
+    updateData.supplierName = data.supplierName;
+  if (data.status !== undefined) updateData.status = data.status;
+  if (data.scheduledDate !== undefined) {
+    updateData.scheduledDate = data.scheduledDate
+      ? new Date(data.scheduledDate)
+      : null;
+  }
+
+  const receipt = await prisma.receipt.update({
     where: { id },
-    data: {
-      ...data,
-      scheduledDate: data.scheduledDate
-        ? new Date(data.scheduledDate)
-        : undefined,
+    data: updateData,
+    include: {
+      lines: {
+        include: {
+          product: true,
+          location: { include: { warehouse: true } },
+        },
+      },
+      createdBy: { select: { id: true, name: true, email: true } },
     },
   });
+
+  return transformOperation(receipt, "RECEIPT");
 }
 
 export async function validateReceipt(id: string) {
@@ -370,7 +382,13 @@ export async function createDelivery(
     code: string;
     customerName?: string;
     scheduledDate?: string;
-    lines: Array<{
+    warehouseId?: string;
+    lineItems?: Array<{
+      productId: string;
+      quantity: number;
+      uom?: string;
+    }>;
+    lines?: Array<{
       productId: string;
       sourceLocationId: string;
       quantity: number;
@@ -378,39 +396,86 @@ export async function createDelivery(
   },
   userId?: string
 ) {
-  return prisma.deliveryOrder.create({
-    data: {
-      code: data.code,
-      customerName: data.customerName,
-      scheduledDate: data.scheduledDate
-        ? new Date(data.scheduledDate)
-        : undefined,
-      createdById: userId,
-      lines: {
-        create: data.lines,
+  // If lineItems are provided without sourceLocationId, we need to get a location from the warehouse
+  let linesToCreate = data.lines || [];
+
+  if (data.lineItems && data.lineItems.length > 0 && data.warehouseId) {
+    // Get first active location in the warehouse for each line item
+    const locations = await prisma.location.findMany({
+      where: { warehouseId: data.warehouseId, isActive: true },
+      take: 1,
+    });
+
+    if (locations.length === 0) {
+      throw new Error(`No active locations found in warehouse`);
+    }
+
+    const locationId = locations[0].id;
+    linesToCreate = data.lineItems.map((item) => ({
+      productId: item.productId,
+      sourceLocationId: locationId,
+      quantity: item.quantity,
+    }));
+  }
+
+  if (linesToCreate.length === 0) {
+    throw new Error("No line items provided");
+  }
+
+  return prisma.deliveryOrder
+    .create({
+      data: {
+        code: data.code,
+        customerName: data.customerName,
+        scheduledDate: data.scheduledDate
+          ? new Date(data.scheduledDate)
+          : undefined,
+        createdById: userId,
+        lines: {
+          create: linesToCreate,
+        },
       },
-    },
-    include: { lines: true },
-  });
+      include: {
+        lines: {
+          include: {
+            product: true,
+            sourceLocation: { include: { warehouse: true } },
+          },
+        },
+        createdBy: { select: { id: true, name: true, email: true } },
+      },
+    })
+    .then((delivery) => transformOperation(delivery, "DELIVERY"));
 }
 
-export async function updateDelivery(
-  id: string,
-  data: Partial<{
-    customerName: string;
-    scheduledDate: string;
-    status: OperationStatus;
-  }>
-) {
-  return prisma.deliveryOrder.update({
+export async function updateDelivery(id: string, data: any) {
+  // Filter only valid DeliveryOrder model fields
+  const updateData: any = {};
+
+  if (data.customerName !== undefined)
+    updateData.customerName = data.customerName;
+  if (data.status !== undefined) updateData.status = data.status;
+  if (data.scheduledDate !== undefined) {
+    updateData.scheduledDate = data.scheduledDate
+      ? new Date(data.scheduledDate)
+      : null;
+  }
+
+  const delivery = await prisma.deliveryOrder.update({
     where: { id },
-    data: {
-      ...data,
-      scheduledDate: data.scheduledDate
-        ? new Date(data.scheduledDate)
-        : undefined,
+    data: updateData,
+    include: {
+      lines: {
+        include: {
+          product: true,
+          sourceLocation: { include: { warehouse: true } },
+        },
+      },
+      createdBy: { select: { id: true, name: true, email: true } },
     },
   });
+
+  return transformOperation(delivery, "DELIVERY");
 }
 
 export async function validateDelivery(id: string) {
@@ -422,45 +487,92 @@ export async function validateDelivery(id: string) {
 
     if (!delivery) throw new Error("Delivery not found");
     if (delivery.status === "DONE")
-      throw new Error("Delivery already validated");
+      throw new Error("Delivery already completed");
 
-    for (const line of delivery.lines) {
-      const quant = await tx.stockQuant.findUnique({
-        where: {
-          productId_locationId: {
-            productId: line.productId,
-            locationId: line.sourceLocationId,
+    // Check if delivery has line items
+    if (!delivery.lines || delivery.lines.length === 0) {
+      throw new Error("Cannot validate delivery without line items");
+    }
+
+    // If transitioning from DRAFT to READY, validate stock
+    if (delivery.status === "DRAFT") {
+      // Check stock availability
+      for (const line of delivery.lines) {
+        const quant = await tx.stockQuant.findUnique({
+          where: {
+            productId_locationId: {
+              productId: line.productId,
+              locationId: line.sourceLocationId,
+            },
           },
-        },
-      });
+        });
 
-      if (!quant || quant.quantity < line.quantity) {
-        throw new Error(
-          `Insufficient stock for product ${line.productId} at location ${line.sourceLocationId}`
+        if (!quant || quant.quantity < line.quantity) {
+          throw new Error(
+            `Insufficient stock for product ${line.productId} at location ${line.sourceLocationId}`
+          );
+        }
+      }
+
+      // Deduct stock (from freeToUse)
+      for (const line of delivery.lines) {
+        await updateStockQuant(
+          line.productId,
+          line.sourceLocationId,
+          -line.quantity
         );
       }
 
-      await updateStockQuant(
-        line.productId,
-        line.sourceLocationId,
-        -line.quantity
-      );
-      await tx.stockMove.create({
-        data: {
-          moveType: "DELIVERY",
-          reference: delivery.code,
-          productId: line.productId,
-          fromLocationId: line.sourceLocationId,
-          quantity: line.quantity,
-          status: "DONE",
+      const updated = await tx.deliveryOrder.update({
+        where: { id },
+        data: { status: "READY" },
+        include: {
+          lines: {
+            include: {
+              product: true,
+              sourceLocation: { include: { warehouse: true } },
+            },
+          },
+          createdBy: { select: { id: true, name: true, email: true } },
         },
       });
+
+      return transformOperation(updated, "DELIVERY");
     }
 
-    return tx.deliveryOrder.update({
-      where: { id },
-      data: { status: "DONE" },
-    });
+    // If transitioning from READY to DONE, create stock moves
+    if (delivery.status === "READY") {
+      for (const line of delivery.lines) {
+        await tx.stockMove.create({
+          data: {
+            moveType: "DELIVERY",
+            reference: delivery.code,
+            productId: line.productId,
+            fromLocationId: line.sourceLocationId,
+            quantity: line.quantity,
+            status: "DONE",
+          },
+        });
+      }
+
+      const updated = await tx.deliveryOrder.update({
+        where: { id },
+        data: { status: "DONE" },
+        include: {
+          lines: {
+            include: {
+              product: true,
+              sourceLocation: { include: { warehouse: true } },
+            },
+          },
+          createdBy: { select: { id: true, name: true, email: true } },
+        },
+      });
+
+      return transformOperation(updated, "DELIVERY");
+    }
+
+    throw new Error("Invalid status transition");
   });
 }
 
@@ -537,21 +649,20 @@ export async function createTransfer(
   });
 }
 
-export async function updateTransfer(
-  id: string,
-  data: Partial<{
-    scheduledDate: string;
-    status: OperationStatus;
-  }>
-) {
+export async function updateTransfer(id: string, data: any) {
+  // Filter only valid InternalTransfer model fields
+  const updateData: any = {};
+
+  if (data.status !== undefined) updateData.status = data.status;
+  if (data.scheduledDate !== undefined) {
+    updateData.scheduledDate = data.scheduledDate
+      ? new Date(data.scheduledDate)
+      : null;
+  }
+
   return prisma.internalTransfer.update({
     where: { id },
-    data: {
-      ...data,
-      scheduledDate: data.scheduledDate
-        ? new Date(data.scheduledDate)
-        : undefined,
-    },
+    data: updateData,
   });
 }
 
@@ -676,16 +787,16 @@ export async function createAdjustment(
   });
 }
 
-export async function updateAdjustment(
-  id: string,
-  data: Partial<{
-    reason: string;
-    status: OperationStatus;
-  }>
-) {
+export async function updateAdjustment(id: string, data: any) {
+  // Filter only valid InventoryAdjustment model fields
+  const updateData: any = {};
+
+  if (data.reason !== undefined) updateData.reason = data.reason;
+  if (data.status !== undefined) updateData.status = data.status;
+
   return prisma.inventoryAdjustment.update({
     where: { id },
-    data,
+    data: updateData,
   });
 }
 

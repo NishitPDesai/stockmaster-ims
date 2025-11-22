@@ -1,92 +1,117 @@
-import { useEffect, useState } from 'react'
-import { useAppSelector, useAppDispatch } from '@/store/hooks'
-import { fetchOperations, setFilters, changeOperationStatus, setSelectedOperation, updateOperation, createOperation, fetchOperationById } from '@/store/slices/operationSlice'
-import { fetchWarehouses } from '@/store/slices/warehouseSlice'
-import { fetchProducts } from '@/store/slices/productSlice'
-import { DataTable, Column } from '@/components/common/DataTable'
-import { FilterBar } from '@/components/common/FilterBar'
-import { Button } from '@/components/ui/button'
-import { StatusBadge } from '@/components/common/StatusBadge'
-import { Operation, DocumentType } from '@/types'
-import { Plus, Download, Eye, Edit } from 'lucide-react'
-import { formatDateTime } from '@/lib/format'
-import { OperationForm } from '@/components/forms/OperationForm'
-import { OperationDetails } from '@/components/common/OperationDetails'
-import { StatusChangeDropdown } from '@/components/common/StatusChangeDropdown'
-import { exportToCSV } from '@/lib/export'
-import { hasPermission } from '@/lib/permissions'
-import { OperationStatus } from '@/types/Status'
-import { toast } from '@/lib/toast'
+import { useEffect, useState } from "react";
+import { useAppSelector, useAppDispatch } from "@/store/hooks";
+import {
+  fetchOperations,
+  setFilters,
+  changeOperationStatus,
+  setSelectedOperation,
+  updateOperation,
+  createOperation,
+  fetchOperationById,
+} from "@/store/slices/operationSlice";
+import { fetchWarehouses } from "@/store/slices/warehouseSlice";
+import { fetchProducts } from "@/store/slices/productSlice";
+import { DataTable, Column } from "@/components/common/DataTable";
+import { FilterBar } from "@/components/common/FilterBar";
+import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/common/StatusBadge";
+import { Operation, DocumentType } from "@/types";
+import { Plus, Download, Eye, Edit } from "lucide-react";
+import { formatDateTime } from "@/lib/format";
+import { OperationForm } from "@/components/forms/OperationForm";
+import { OperationDetails } from "@/components/common/OperationDetails";
+import { StatusChangeDropdown } from "@/components/common/StatusChangeDropdown";
+import { exportToCSV } from "@/lib/export";
+import { hasPermission } from "@/lib/permissions";
+import { OperationStatus } from "@/types/Status";
+import { toast } from "@/lib/toast";
 
 export function Transfers() {
-  const dispatch = useAppDispatch()
-  const { items, isLoading, filters, selectedOperation } = useAppSelector((state) => state.operations)
-  const { warehouses } = useAppSelector((state) => state.warehouses)
-  const user = useAppSelector((state) => state.auth.user)
-  const [isFormOpen, setIsFormOpen] = useState(false)
-  const [editingOperation, setEditingOperation] = useState<Operation | null>(null)
+  const dispatch = useAppDispatch();
+  const { items, isLoading, filters, selectedOperation } = useAppSelector(
+    (state) => state.operations
+  );
+  const { warehouses } = useAppSelector((state) => state.warehouses);
+  const user = useAppSelector((state) => state.auth.user);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingOperation, setEditingOperation] = useState<Operation | null>(
+    null
+  );
 
   useEffect(() => {
-    dispatch(fetchWarehouses())
-    dispatch(fetchProducts())
-    dispatch(fetchOperations({ documentType: DocumentType.TRANSFER }))
-  }, [dispatch])
+    dispatch(fetchWarehouses());
+    dispatch(fetchProducts());
+    dispatch(fetchOperations({ documentType: DocumentType.TRANSFER }));
+  }, [dispatch]);
 
-  const canCreate = hasPermission(user, 'operations.create')
-  const canEdit = hasPermission(user, 'operations.edit')
-  const canValidate = hasPermission(user, 'operations.validate')
-  const canComplete = hasPermission(user, 'operations.complete')
-  const canCancel = hasPermission(user, 'operations.cancel')
-  const isManager = user?.role === 'manager'
+  const canCreate = hasPermission(user, "operations.create");
+  const canEdit = hasPermission(user, "operations.edit");
+  const canValidate = hasPermission(user, "operations.validate");
+  const canComplete = hasPermission(user, "operations.complete");
+  const canCancel = hasPermission(user, "operations.cancel");
+  const isManager = user?.role === "manager";
 
   const handleViewDetails = async (operation: Operation) => {
     // Fetch full operation details to ensure we have all data including lineItems
     try {
-      const fullOperation = await dispatch(fetchOperationById(operation.id)).unwrap();
+      const fullOperation = await dispatch(
+        fetchOperationById({
+          id: operation.id,
+          documentType: DocumentType.TRANSFER,
+        })
+      ).unwrap();
       dispatch(setSelectedOperation(fullOperation));
     } catch (error) {
       // If fetch fails, use the operation from the list
       dispatch(setSelectedOperation(operation));
     }
-  }
+  };
 
   const handleEdit = (operation: Operation) => {
     if (operation.status === OperationStatus.DRAFT && canEdit) {
-      setEditingOperation(operation)
-      setIsFormOpen(true)
+      setEditingOperation(operation);
+      setIsFormOpen(true);
     }
-  }
+  };
 
   const handleStatusChange = async (id: string, status: OperationStatus) => {
     try {
-      await dispatch(changeOperationStatus({ id, status, documentType: DocumentType.TRANSFER })).unwrap()
-      await dispatch(fetchOperations({ documentType: DocumentType.TRANSFER }))
-      dispatch(setSelectedOperation(null))
-      toast(`Operation status changed to ${status}`, 'success')
+      await dispatch(
+        changeOperationStatus({
+          id,
+          status,
+          documentType: DocumentType.TRANSFER,
+        })
+      ).unwrap();
+      await dispatch(fetchOperations({ documentType: DocumentType.TRANSFER }));
+      dispatch(setSelectedOperation(null));
+      toast(`Operation status changed to ${status}`, "success");
     } catch (error) {
-      toast('Failed to change operation status', 'error')
+      toast("Failed to change operation status", "error");
     }
-  }
+  };
 
   const handleExport = () => {
     const exportData = transfers.map((t) => ({
-      'Document Number': t.documentNumber,
-      'Source Warehouse': t.sourceWarehouseName || '',
-      'Destination Warehouse': t.destinationWarehouseName || '',
-      'Status': t.status,
-      'Created': formatDateTime(t.createdAt),
-      'Line Items': t.lineItems.length,
-    }))
-    exportToCSV(exportData, 'transfers')
-    toast('Transfers exported successfully', 'success')
-  }
+      "Document Number": t.documentNumber,
+      "Source Warehouse": t.sourceWarehouseName || "",
+      "Destination Warehouse": t.destinationWarehouseName || "",
+      Status: t.status,
+      Created: formatDateTime(t.createdAt),
+      "Line Items": t.lineItems.length,
+    }));
+    exportToCSV(exportData, "transfers");
+    toast("Transfers exported successfully", "success");
+  };
 
-  const transfers = (items || []).filter((o) => o.documentType === DocumentType.TRANSFER)
+  const transfers = (items || []).filter(
+    (o) => o.documentType === DocumentType.TRANSFER
+  );
 
   const columns: Column<Operation>[] = [
     {
-      key: 'documentNumber',
-      header: 'Document #',
+      key: "documentNumber",
+      header: "Document #",
       cell: (row) => (
         <button
           onClick={() => handleViewDetails(row)}
@@ -97,18 +122,18 @@ export function Transfers() {
       ),
     },
     {
-      key: 'source',
-      header: 'From',
-      cell: (row) => row.sourceWarehouseName || '-',
+      key: "source",
+      header: "From",
+      cell: (row) => row.sourceWarehouseName || "-",
     },
     {
-      key: 'destination',
-      header: 'To',
-      cell: (row) => row.destinationWarehouseName || '-',
+      key: "destination",
+      header: "To",
+      cell: (row) => row.destinationWarehouseName || "-",
     },
     {
-      key: 'status',
-      header: 'Status',
+      key: "status",
+      header: "Status",
       cell: (row) => (
         <StatusChangeDropdown
           currentStatus={row.status}
@@ -121,13 +146,13 @@ export function Transfers() {
       ),
     },
     {
-      key: 'createdAt',
-      header: 'Created',
+      key: "createdAt",
+      header: "Created",
       cell: (row) => formatDateTime(row.createdAt),
     },
     {
-      key: 'actions',
-      header: 'Actions',
+      key: "actions",
+      header: "Actions",
       cell: (row) => (
         <div className="flex gap-2">
           <Button
@@ -151,7 +176,7 @@ export function Transfers() {
         </div>
       ),
     },
-  ]
+  ];
 
   return (
     <div className="space-y-6 p-6">
@@ -165,10 +190,12 @@ export function Transfers() {
             Export
           </Button>
           {canCreate && (
-            <Button onClick={() => {
-              setEditingOperation(null)
-              setIsFormOpen(true)
-            }}>
+            <Button
+              onClick={() => {
+                setEditingOperation(null);
+                setIsFormOpen(true);
+              }}
+            >
               <Plus className="mr-2 h-4 w-4" />
               New Transfer
             </Button>
@@ -179,8 +206,14 @@ export function Transfers() {
       <FilterBar
         filters={filters}
         onFiltersChange={(newFilters) => {
-          dispatch(setFilters(newFilters))
-          dispatch(fetchOperations({ ...filters, ...newFilters, documentType: DocumentType.TRANSFER }))
+          dispatch(setFilters(newFilters));
+          dispatch(
+            fetchOperations({
+              ...filters,
+              ...newFilters,
+              documentType: DocumentType.TRANSFER,
+            })
+          );
         }}
         warehouses={warehouses || []}
         showDocumentType={false}
@@ -200,20 +233,28 @@ export function Transfers() {
           warehouses={warehouses || []}
           operation={editingOperation}
           onClose={() => {
-            setIsFormOpen(false)
-            setEditingOperation(null)
+            setIsFormOpen(false);
+            setEditingOperation(null);
           }}
           onSave={async (data) => {
             if (editingOperation) {
-              await dispatch(updateOperation({ id: editingOperation.id, data })).unwrap()
-              toast('Transfer updated successfully', 'success')
+              await dispatch(
+                updateOperation({
+                  id: editingOperation.id,
+                  data,
+                  documentType: DocumentType.TRANSFER,
+                })
+              ).unwrap();
+              toast("Transfer updated successfully", "success");
             } else {
-              await dispatch(createOperation(data)).unwrap()
-              toast('Transfer created successfully', 'success')
+              await dispatch(createOperation(data)).unwrap();
+              toast("Transfer created successfully", "success");
             }
-            await dispatch(fetchOperations({ documentType: DocumentType.TRANSFER }))
-            setIsFormOpen(false)
-            setEditingOperation(null)
+            await dispatch(
+              fetchOperations({ documentType: DocumentType.TRANSFER })
+            );
+            setIsFormOpen(false);
+            setEditingOperation(null);
           }}
         />
       )}
@@ -226,6 +267,5 @@ export function Transfers() {
         />
       )}
     </div>
-  )
+  );
 }
-
