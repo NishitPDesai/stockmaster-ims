@@ -236,7 +236,7 @@ export async function createReceipt(
     supplierName?: string;
     supplierId?: string;
     warehouseId?: string;
-    scheduleDate?: string;
+    scheduledDate?: string;
     lineItems: Array<{
       productId: string;
       locationId?: string;
@@ -248,7 +248,7 @@ export async function createReceipt(
   },
   userId?: string
 ) {
-  
+
   // Get default location from warehouse if locationId is not provided in line items
   let defaultLocationId: string | undefined;
   if (data.warehouseId) {
@@ -311,8 +311,8 @@ export async function createReceipt(
     receiptData.supplierName = data.supplierName || data.supplierId;
   }
   
-  if (data.scheduleDate) {
-    receiptData.scheduledDate = new Date(data.scheduleDate);
+  if (data.scheduledDate) {
+    receiptData.scheduledDate = new Date(data.scheduledDate);
   }
 
   return prisma.receipt.create({
