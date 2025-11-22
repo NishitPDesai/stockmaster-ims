@@ -16,11 +16,11 @@ export function Ledger() {
 
   useEffect(() => {
     dispatch(fetchWarehouses())
-    dispatch(fetchLedger())
   }, [dispatch])
 
   useEffect(() => {
-    dispatch(fetchLedger(filters))
+    // Fetch ledger data when component mounts or filters change
+    dispatch(fetchLedger(filters || {}))
   }, [dispatch, filters])
 
   const columns: Column<MoveLog>[] = [

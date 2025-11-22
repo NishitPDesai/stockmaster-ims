@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import { User, LoginCredentials, RegisterCredentials, AuthResponse } from '@/types'
 import { apiClient, USE_MOCK } from '@/lib/api'
-import { setStoredUser, clearStoredAuth, setAuthToken, setRefreshToken } from '@/lib/auth'
+import { setStoredUser, clearStoredAuth, setAuthToken, setRefreshToken, getStoredUser, getAuthToken, getRefreshToken } from '@/lib/auth'
 import { mockAuth } from '@/mocks/auth'
 
 interface AuthState {
@@ -93,11 +93,35 @@ export const restoreAuth = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       if (USE_MOCK) {
+        // In mock mode, restore from localStorage
+        const storedUser = getStoredUser();
+        const storedToken = getAuthToken();
+        const storedRefreshToken = getRefreshToken();
+        
+        if (storedUser && storedToken) {
+          return {
+            user: storedUser,
+            token: storedToken,
+            refreshToken: storedRefreshToken || null,
+          };
+        }
+        
+        // If no stored auth, try refresh (for backward compatibility)
         const response = await mockAuth.refresh();
+        setStoredUser(response.user);
+        setAuthToken(response.token);
+        if (response.refreshToken) {
+          setRefreshToken(response.refreshToken);
+        }
         return response;
       }
 
       // Use /auth/me endpoint to verify token and get current user
+      const token = getAuthToken();
+      if (!token) {
+        throw new Error("No token found");
+      }
+
       const response = await apiClient.get<{ success: boolean; user: User }>(
         "/auth/me"
       );
@@ -105,7 +129,7 @@ export const restoreAuth = createAsyncThunk(
 
       setStoredUser(user);
 
-      return { user, token: null, refreshToken: null };
+      return { user, token, refreshToken: getRefreshToken() };
     } catch (error: any) {
       clearStoredAuth();
       return rejectWithValue(
@@ -178,7 +202,9 @@ const authSlice = createSlice({
       .addCase(restoreAuth.fulfilled, (state, action) => {
         state.isLoading = false;
         state.user = action.payload.user;
+        state.token = action.payload.token;
         state.isAuthenticated = true;
+        state.error = null;
       })
       .addCase(restoreAuth.rejected, (state) => {
         state.isLoading = false;

@@ -97,6 +97,7 @@ model Product {
   sku          String          @unique
   category     ProductCategory?
   uom          String?
+  unitCost     Float?          // Per unit cost in Rs
   isActive     Boolean         @default(true)
   initialStock Int             @default(0)
   stockQuants  StockQuant[]

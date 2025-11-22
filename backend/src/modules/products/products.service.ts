@@ -66,6 +66,7 @@ export async function listProducts(filters: any = {}) {
       sku: product.sku,
       category: product.category,
       uom: product.uom,
+      unitCost: product.unitCost,
       initialStock: product.initialStock,
       stockPerWarehouse,
       createdAt: product.createdAt.toISOString(),
@@ -130,6 +131,7 @@ export async function createProduct(data: {
   category?: string;
   uom?: string;
   initialStock?: number;
+  unitCost?: number;
 }) {
   const product = await prisma.product.create({
     data: {
@@ -138,6 +140,7 @@ export async function createProduct(data: {
       category: data.category as ProductCategory | undefined,
       uom: data.uom,
       initialStock: data.initialStock || 0,
+      unitCost: data.unitCost,
     },
   });
 
@@ -152,6 +155,7 @@ export async function updateProduct(
     category: string;
     uom: string;
     isActive: boolean;
+    unitCost: number;
   }>
 ) {
   const updateData: any = { ...data };
