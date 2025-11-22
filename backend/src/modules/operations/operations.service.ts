@@ -160,19 +160,21 @@ export async function listAllOperations(filters: any = {}) {
 async function updateStockQuant(
   productId: string,
   locationId: string,
-  delta: number
+  delta: number,
+  tx?: any
 ) {
-  const existing = await prisma.stockQuant.findUnique({
+  const client = tx || prisma;
+  const existing = await client.stockQuant.findUnique({
     where: { productId_locationId: { productId, locationId } },
   });
 
   if (existing) {
-    return prisma.stockQuant.update({
+    return client.stockQuant.update({
       where: { id: existing.id },
       data: { quantity: existing.quantity + delta },
     });
   } else {
-    return prisma.stockQuant.create({
+    return client.stockQuant.create({
       data: { productId, locationId, quantity: Math.max(0, delta) },
     });
   }
@@ -248,7 +250,6 @@ export async function createReceipt(
   },
   userId?: string
 ) {
-  
   // Get default location from warehouse if locationId is not provided in line items
   let defaultLocationId: string | undefined;
   if (data.warehouseId) {
@@ -257,7 +258,7 @@ export async function createReceipt(
         warehouseId: data.warehouseId,
         isActive: true,
       },
-      orderBy: { name: 'asc' },
+      orderBy: { name: "asc" },
     });
     if (defaultLocation) {
       defaultLocationId = defaultLocation.id;
@@ -271,10 +272,10 @@ export async function createReceipt(
   // Map line items to Prisma format
   const mappedLineItems = data.lineItems.map((item) => {
     const locationId = item.locationId || defaultLocationId;
-    
+
     if (!locationId) {
       throw new Error(
-        'Location ID is required. Either provide locationId in line items or warehouseId with at least one active location.'
+        "Location ID is required. Either provide locationId in line items or warehouseId with at least one active location."
       );
     }
 
@@ -310,14 +311,14 @@ export async function createReceipt(
   if (data.supplierName || data.supplierId) {
     receiptData.supplierName = data.supplierName || data.supplierId;
   }
-  
+
   if (data.scheduleDate) {
     receiptData.scheduledDate = new Date(data.scheduleDate);
   }
 
   return prisma.receipt.create({
     data: receiptData,
-    include: { 
+    include: {
       lines: {
         include: {
           product: true,
@@ -371,7 +372,7 @@ export async function validateReceipt(id: string) {
     for (const line of receipt.lines) {
       const qty = line.receivedQty || line.orderedQty || 0;
       if (qty > 0) {
-        await updateStockQuant(line.productId, line.locationId, qty);
+        await updateStockQuant(line.productId, line.locationId, qty, tx);
         await tx.stockMove.create({
           data: {
             moveType: "RECEIPT",
@@ -468,22 +469,152 @@ export async function createDelivery(
   let linesToCreate = data.lines || [];
 
   if (data.lineItems && data.lineItems.length > 0 && data.warehouseId) {
-    // Get first active location in the warehouse for each line item
-    const locations = await prisma.location.findMany({
-      where: { warehouseId: data.warehouseId, isActive: true },
-      take: 1,
-    });
+    // For each product, find a location with sufficient stock
+    linesToCreate = [];
 
-    if (locations.length === 0) {
-      throw new Error(`No active locations found in warehouse`);
+    for (const item of data.lineItems) {
+      // Find locations in the warehouse with sufficient stock for this product
+      const stockQuants = await prisma.stockQuant.findMany({
+        where: {
+          productId: item.productId,
+          quantity: { gte: item.quantity },
+          location: {
+            warehouseId: data.warehouseId,
+            isActive: true,
+          },
+        },
+        include: { location: true },
+        orderBy: { quantity: "desc" },
+        take: 1,
+      });
+
+      if (stockQuants.length === 0) {
+        // If no location has sufficient stock, get any location with stock
+        const anyStock = await prisma.stockQuant.findFirst({
+          where: {
+            productId: item.productId,
+            quantity: { gt: 0 },
+            location: {
+              warehouseId: data.warehouseId,
+              isActive: true,
+            },
+          },
+          include: { location: true },
+          orderBy: { quantity: "desc" },
+        });
+
+        if (anyStock) {
+          // Warn about insufficient stock but still create the line
+          linesToCreate.push({
+            productId: item.productId,
+            sourceLocationId: anyStock.locationId,
+            quantity: item.quantity,
+          });
+        } else {
+          // Check if stock exists in other warehouses
+          const stockInOtherWarehouses = await prisma.stockQuant.findFirst({
+            where: {
+              productId: item.productId,
+              quantity: { gt: 0 },
+            },
+            include: {
+              location: {
+                include: { warehouse: true },
+              },
+              product: true,
+            },
+          });
+
+          if (stockInOtherWarehouses) {
+            throw new Error(
+              `Product "${stockInOtherWarehouses.product?.name}" has stock in warehouse "${stockInOtherWarehouses.location.warehouse?.name}", but not in the selected warehouse. Please select the correct warehouse.`
+            );
+          }
+
+          // Check if stock exists in inactive locations
+          const stockInInactiveLocation = await prisma.stockQuant.findFirst({
+            where: {
+              productId: item.productId,
+              quantity: { gt: 0 },
+              location: {
+                warehouseId: data.warehouseId,
+                isActive: false,
+              },
+            },
+            include: { location: true, product: true },
+          });
+
+          if (stockInInactiveLocation) {
+            throw new Error(
+              `Product "${stockInInactiveLocation.product?.name}" has stock in an inactive location. Please activate the location first.`
+            );
+          }
+
+          // Check if product has initialStock but no StockQuant records
+          const product = await prisma.product.findUnique({
+            where: { id: item.productId },
+          });
+
+          if (product && product.initialStock > 0) {
+            // Product has initialStock but no location stock - create it in first active location
+            const firstLocation = await prisma.location.findFirst({
+              where: {
+                warehouseId: data.warehouseId,
+                isActive: true,
+              },
+            });
+
+            if (firstLocation) {
+              // Create stock quant for this product in the location
+              await prisma.stockQuant.create({
+                data: {
+                  productId: product.id,
+                  locationId: firstLocation.id,
+                  quantity: product.initialStock,
+                },
+              });
+
+              // Now use this location
+              linesToCreate.push({
+                productId: item.productId,
+                sourceLocationId: firstLocation.id,
+                quantity: item.quantity,
+              });
+              continue; // Skip to next item
+            } else {
+              throw new Error(
+                `Product "${product.name}" has initial stock (${product.initialStock}), but no active locations found in the selected warehouse. Please create an active location first.`
+              );
+            }
+          }
+
+          // Get all available locations for debugging
+          const allLocations = await prisma.location.findMany({
+            where: { warehouseId: data.warehouseId },
+            include: { warehouse: true },
+          });
+
+          throw new Error(
+            `Product "${
+              product?.name || item.productId
+            }" has no stock in warehouse "${
+              allLocations[0]?.warehouse?.name || data.warehouseId
+            }". ` +
+              `Initial stock: ${product?.initialStock || 0}. ` +
+              `Active locations in warehouse: ${
+                allLocations.filter((l) => l.isActive).length
+              }. ` +
+              `Please add stock via Receipt operation first.`
+          );
+        }
+      } else {
+        linesToCreate.push({
+          productId: item.productId,
+          sourceLocationId: stockQuants[0].locationId,
+          quantity: item.quantity,
+        });
+      }
     }
-
-    const locationId = locations[0].id;
-    linesToCreate = data.lineItems.map((item) => ({
-      productId: item.productId,
-      sourceLocationId: locationId,
-      quantity: item.quantity,
-    }));
   }
 
   if (linesToCreate.length === 0) {
@@ -575,9 +706,10 @@ export async function validateDelivery(id: string) {
           },
         });
 
-        if (!quant || quant.quantity < line.quantity) {
+        const currentStock = quant?.quantity || 0;
+        if (currentStock < line.quantity) {
           throw new Error(
-            `Insufficient stock for product ${line.productId} at location ${line.sourceLocationId}`
+            `Insufficient stock for product ${line.productId} at location ${line.sourceLocationId}. Available: ${currentStock}, Required: ${line.quantity}`
           );
         }
       }
@@ -587,7 +719,8 @@ export async function validateDelivery(id: string) {
         await updateStockQuant(
           line.productId,
           line.sourceLocationId,
-          -line.quantity
+          -line.quantity,
+          tx
         );
       }
 
@@ -764,12 +897,14 @@ export async function validateTransfer(id: string) {
       await updateStockQuant(
         line.productId,
         line.sourceLocationId,
-        -line.quantity
+        -line.quantity,
+        tx
       );
       await updateStockQuant(
         line.productId,
         line.destinationLocationId,
-        line.quantity
+        line.quantity,
+        tx
       );
 
       await tx.stockMove.create({
@@ -883,7 +1018,12 @@ export async function validateAdjustment(id: string) {
       const delta = line.countedQty - line.previousQty;
 
       if (delta !== 0) {
-        await updateStockQuant(line.productId, adjustment.locationId, delta);
+        await updateStockQuant(
+          line.productId,
+          adjustment.locationId,
+          delta,
+          tx
+        );
         await tx.stockMove.create({
           data: {
             moveType: "ADJUSTMENT",
