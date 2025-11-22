@@ -206,7 +206,7 @@ export async function listReceipts(filters: any = {}) {
 
   if (warehouseId) {
     return receipts.filter((r) =>
-      r.lines.some((l) => l.location.warehouseId === warehouseId)
+      r.lines.some((l) => l.location?.warehouseId === warehouseId)
     );
   }
 
@@ -233,29 +233,97 @@ export async function createReceipt(
   data: {
     code: string;
     supplierName?: string;
-    scheduledDate?: string;
-    lines: Array<{
+    supplierId?: string;
+    warehouseId?: string;
+    scheduleDate?: string;
+    lineItems: Array<{
       productId: string;
-      locationId: string;
+      locationId?: string;
+      quantity?: number;
       orderedQty?: number;
       receivedQty?: number;
+      uom?: string;
     }>;
   },
   userId?: string
 ) {
+  
+  // Get default location from warehouse if locationId is not provided in line items
+  let defaultLocationId: string | undefined;
+  if (data.warehouseId) {
+    const defaultLocation = await prisma.location.findFirst({
+      where: {
+        warehouseId: data.warehouseId,
+        isActive: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+    if (defaultLocation) {
+      defaultLocationId = defaultLocation.id;
+    } else {
+      throw new Error(
+        `No active location found for warehouse ${data.warehouseId}. Please create a location for this warehouse first.`
+      );
+    }
+  }
+
+  // Map line items to Prisma format
+  const mappedLineItems = data.lineItems.map((item) => {
+    const locationId = item.locationId || defaultLocationId;
+    
+    if (!locationId) {
+      throw new Error(
+        'Location ID is required. Either provide locationId in line items or warehouseId with at least one active location.'
+      );
+    }
+
+    const orderedQty = item.orderedQty ?? item.quantity;
+
+    const lineItem: any = {
+      productId: item.productId,
+      locationId,
+    };
+
+    // Only include orderedQty if it has a value
+    if (orderedQty !== undefined && orderedQty !== null) {
+      lineItem.orderedQty = orderedQty;
+    }
+
+    // Only include receivedQty if it has a value
+    if (item.receivedQty !== undefined && item.receivedQty !== null) {
+      lineItem.receivedQty = item.receivedQty;
+    }
+
+    return lineItem;
+  });
+
+  const receiptData: any = {
+    code: data.code,
+    createdById: userId,
+    lines: {
+      create: mappedLineItems,
+    },
+  };
+
+  // Only include optional fields if they have values
+  if (data.supplierName || data.supplierId) {
+    receiptData.supplierName = data.supplierName || data.supplierId;
+  }
+  
+  if (data.scheduleDate) {
+    receiptData.scheduledDate = new Date(data.scheduleDate);
+  }
+
   return prisma.receipt.create({
-    data: {
-      code: data.code,
-      supplierName: data.supplierName,
-      scheduledDate: data.scheduledDate
-        ? new Date(data.scheduledDate)
-        : undefined,
-      createdById: userId,
+    data: receiptData,
+    include: { 
       lines: {
-        create: data.lines,
+        include: {
+          product: true,
+          location: true,
+        },
       },
     },
-    include: { lines: true },
   });
 }
 

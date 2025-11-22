@@ -26,7 +26,22 @@ export async function createWarehouse(data: {
   city?: string;
   country?: string;
 }) {
-  return prisma.warehouse.create({ data });
+  // Create warehouse with a default location
+  return prisma.warehouse.create({
+    data: {
+      ...data,
+      locations: {
+        create: {
+          name: "Main Location",
+          code: `${data.code}-MAIN`,
+          description: "Default location for this warehouse",
+        },
+      },
+    },
+    include: {
+      locations: true,
+    },
+  });
 }
 
 export async function updateWarehouse(
