@@ -1,13 +1,10 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import { User, LoginCredentials, AuthResponse } from "@/types";
-import { apiClient, USE_MOCK } from "@/lib/api";
+import { User, LoginCredentials } from "@/types";
+import { apiClient } from "@/lib/api";
 import {
   setStoredUser,
   clearStoredAuth,
-  setAuthToken,
-  setRefreshToken,
 } from "@/lib/auth";
-import { mockAuth } from "@/mocks/auth";
 
 interface AuthState {
   user: User | null;
@@ -30,22 +27,16 @@ export const login = createAsyncThunk(
   "auth/login",
   async (credentials: LoginCredentials, { rejectWithValue }) => {
     try {
-      if (USE_MOCK) {
-        const response = await mockAuth.login(credentials);
-        return response;
-      }
-
-      const response = await apiClient.post<AuthResponse>(
+      const response = await apiClient.post<{ success: boolean; user: User; token?: string }>(
         "/auth/login",
         credentials
       );
-      const { user, token, refreshToken } = response.data;
+      const { user } = response.data;
 
+      // Backend uses HTTP-only cookies, but we store user info in localStorage
       setStoredUser(user);
-      setAuthToken(token);
-      setRefreshToken(refreshToken);
 
-      return { user, token, refreshToken };
+      return { user, token: null, refreshToken: null };
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || "Login failed");
     }
@@ -59,36 +50,13 @@ export const signup = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      if (USE_MOCK) {
-        // Mock signup - just create a user and log them in
-        const mockUser: User = {
-          id: Math.random().toString(),
-          name: data.name,
-          email: data.email,
-          role: "STAFF",
-        };
-        const mockToken = "mock-token-" + Math.random();
-        const mockRefreshToken = "mock-refresh-" + Math.random();
+      const response = await apiClient.post<{ success: boolean; user: User; token?: string }>("/auth/signup", data);
+      const { user } = response.data;
 
-        setStoredUser(mockUser);
-        setAuthToken(mockToken);
-        setRefreshToken(mockRefreshToken);
-
-        return {
-          user: mockUser,
-          token: mockToken,
-          refreshToken: mockRefreshToken,
-        };
-      }
-
-      const response = await apiClient.post<AuthResponse>("/auth/signup", data);
-      const { user, token, refreshToken } = response.data;
-
+      // Backend uses HTTP-only cookies, but we store user info in localStorage
       setStoredUser(user);
-      setAuthToken(token);
-      if (refreshToken) setRefreshToken(refreshToken);
 
-      return { user, token, refreshToken };
+      return { user, token: null, refreshToken: null };
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || "Signup failed");
     }
@@ -97,12 +65,10 @@ export const signup = createAsyncThunk(
 
 export const logout = createAsyncThunk("auth/logout", async () => {
   clearStoredAuth();
-  if (!USE_MOCK) {
-    try {
-      await apiClient.post("/auth/logout");
-    } catch (error) {
-      // Ignore logout errors
-    }
+  try {
+    await apiClient.post("/auth/logout");
+  } catch (error) {
+    // Ignore logout errors
   }
 });
 
@@ -110,12 +76,7 @@ export const restoreAuth = createAsyncThunk(
   "auth/restore",
   async (_, { rejectWithValue }) => {
     try {
-      if (USE_MOCK) {
-        const response = await mockAuth.refresh();
-        return response;
-      }
-
-      // Use /auth/me endpoint to verify token and get current user
+      // Use /auth/me endpoint to verify cookie and get current user
       const response = await apiClient.get<{ success: boolean; user: User }>(
         "/auth/me"
       );
@@ -155,7 +116,7 @@ const authSlice = createSlice({
       .addCase(signup.fulfilled, (state, action) => {
         state.isLoading = false;
         state.user = action.payload.user;
-        state.token = action.payload.token;
+        state.token = null; // Backend uses cookies
         state.isAuthenticated = true;
         state.error = null;
       })
@@ -172,7 +133,7 @@ const authSlice = createSlice({
       .addCase(login.fulfilled, (state, action) => {
         state.isLoading = false;
         state.user = action.payload.user;
-        state.token = action.payload.token;
+        state.token = null; // Backend uses cookies
         state.isAuthenticated = true;
         state.error = null;
       })

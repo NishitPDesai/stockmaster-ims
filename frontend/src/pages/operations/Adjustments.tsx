@@ -47,7 +47,7 @@ export function Adjustments() {
 
   const handleStatusChange = async (id: string, status: OperationStatus) => {
     try {
-      await dispatch(changeOperationStatus({ id, status })).unwrap()
+      await dispatch(changeOperationStatus({ id, status, documentType: DocumentType.ADJUSTMENT })).unwrap()
       await dispatch(fetchOperations({ documentType: DocumentType.ADJUSTMENT }))
       dispatch(setSelectedOperation(null))
       toast(`Operation status changed to ${status}`, 'success')

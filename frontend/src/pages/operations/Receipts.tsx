@@ -15,7 +15,7 @@ import { FilterBar } from "@/components/common/FilterBar";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { Operation, DocumentType } from "@/types";
-import { Plus, Download, Eye, Edit } from "lucide-react";
+import { Plus, Download, Eye, Edit, Printer, CheckCircle, XCircle } from "lucide-react";
 import { formatDateTime } from "@/lib/format";
 import { OperationForm } from "@/components/forms/OperationForm";
 import { OperationDetails } from "@/components/common/OperationDetails";
@@ -49,6 +49,9 @@ export function Receipts() {
   const canCreate = hasPermission(user, "operations.create");
   const canEdit = hasPermission(user, "operations.edit");
   const canDeleteOps = canDelete(user, "operation");
+  const canValidate = hasPermission(user, "operations.validate");
+  const canComplete = hasPermission(user, "operations.complete");
+  const canCancel = hasPermission(user, "operations.cancel");
 
   const receipts = (items || []).filter(
     (o) => o.documentType === DocumentType.RECEIPT
@@ -67,13 +70,44 @@ export function Receipts() {
 
   const handleStatusChange = async (id: string, status: OperationStatus) => {
     try {
-      await dispatch(changeOperationStatus({ id, status })).unwrap();
+      await dispatch(changeOperationStatus({ id, status, documentType: DocumentType.RECEIPT })).unwrap();
       await dispatch(fetchOperations({ documentType: DocumentType.RECEIPT }));
       dispatch(setSelectedOperation(null));
       toast(`Operation status changed to ${status}`, "success");
     } catch (error) {
       toast("Failed to change operation status", "error");
     }
+  };
+
+  const handleValidate = async (operation: Operation) => {
+    if (operation.status === OperationStatus.DRAFT && canValidate) {
+      await handleStatusChange(operation.id, OperationStatus.READY);
+    }
+  };
+
+  const handleComplete = async (operation: Operation) => {
+    if (operation.status === OperationStatus.READY && canComplete) {
+      await handleStatusChange(operation.id, OperationStatus.DONE);
+    }
+  };
+
+  const handleCancel = async (operation: Operation) => {
+    if (
+      operation.status !== OperationStatus.DONE &&
+      operation.status !== OperationStatus.CANCELED &&
+      canCancel &&
+      user?.role === "MANAGER"
+    ) {
+      await handleStatusChange(operation.id, OperationStatus.CANCELED);
+    }
+  };
+
+  const handlePrint = (operation: Operation) => {
+    dispatch(setSelectedOperation(operation));
+    // Print will be handled by OperationDetails component
+    setTimeout(() => {
+      window.print();
+    }, 100);
   };
 
   const handleExport = () => {
@@ -145,6 +179,47 @@ export function Receipts() {
               <Edit className="h-4 w-4" />
             </Button>
           )}
+          {row.status === OperationStatus.DRAFT && canValidate && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleValidate(row)}
+              title="Validate"
+            >
+              <CheckCircle className="h-4 w-4 text-green-600" />
+            </Button>
+          )}
+          {row.status === OperationStatus.READY && canComplete && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleComplete(row)}
+              title="Complete"
+            >
+              <CheckCircle className="h-4 w-4 text-blue-600" />
+            </Button>
+          )}
+          {row.status !== OperationStatus.DONE &&
+            row.status !== OperationStatus.CANCELED &&
+            canCancel &&
+            user?.role === "MANAGER" && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleCancel(row)}
+                title="Cancel"
+              >
+                <XCircle className="h-4 w-4 text-red-600" />
+              </Button>
+            )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => handlePrint(row)}
+            title="Print"
+          >
+            <Printer className="h-4 w-4" />
+          </Button>
         </div>
       ),
     },

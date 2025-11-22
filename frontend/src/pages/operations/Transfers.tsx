@@ -47,7 +47,7 @@ export function Transfers() {
 
   const handleStatusChange = async (id: string, status: OperationStatus) => {
     try {
-      await dispatch(changeOperationStatus({ id, status })).unwrap()
+      await dispatch(changeOperationStatus({ id, status, documentType: DocumentType.TRANSFER })).unwrap()
       await dispatch(fetchOperations({ documentType: DocumentType.TRANSFER }))
       dispatch(setSelectedOperation(null))
       toast(`Operation status changed to ${status}`, 'success')

@@ -1,7 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { ProductCategory } from '@/types'
-import { apiClient, USE_MOCK } from '@/lib/api'
-import { mockCategories } from '@/mocks/categories'
+import { apiClient } from '@/lib/api'
 
 interface CategoryState {
   items: ProductCategory[]
@@ -19,9 +18,6 @@ export const fetchCategories = createAsyncThunk(
   'categories/fetchAll',
   async (_, { rejectWithValue }) => {
     try {
-      if (USE_MOCK) {
-        return mockCategories.getAll()
-      }
       const response = await apiClient.get<ProductCategory[]>('/categories')
       return response.data
     } catch (error: any) {

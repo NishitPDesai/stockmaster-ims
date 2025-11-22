@@ -1,7 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import { Product, CreateProductDto, UpdateProductDto } from '@/types'
-import { apiClient, USE_MOCK } from '@/lib/api'
-import { mockProducts } from '@/mocks/products'
+import { apiClient } from '@/lib/api'
 
 interface ProductState {
   items: Product[]
@@ -29,12 +28,6 @@ export const fetchProducts = createAsyncThunk(
   'products/fetchAll',
   async (_, { rejectWithValue }) => {
     try {
-      if (USE_MOCK) {
-        console.log('📦 Using mock products')
-        const data = await mockProducts.getAll()
-        console.log('📦 Mock products loaded:', data)
-        return data
-      }
       const response = await apiClient.get<Product[]>('/products')
       return response.data
     } catch (error: any) {
@@ -47,9 +40,6 @@ export const fetchProductById = createAsyncThunk(
   'products/fetchById',
   async (id: string, { rejectWithValue }) => {
     try {
-      if (USE_MOCK) {
-        return mockProducts.getById(id)
-      }
       const response = await apiClient.get<Product>(`/products/${id}`)
       return response.data
     } catch (error: any) {
@@ -62,9 +52,6 @@ export const createProduct = createAsyncThunk(
   'products/create',
   async (data: CreateProductDto, { rejectWithValue }) => {
     try {
-      if (USE_MOCK) {
-        return mockProducts.create(data)
-      }
       const response = await apiClient.post<Product>('/products', data)
       return response.data
     } catch (error: any) {
@@ -77,9 +64,6 @@ export const updateProduct = createAsyncThunk(
   'products/update',
   async ({ id, data }: { id: string; data: UpdateProductDto }, { rejectWithValue }) => {
     try {
-      if (USE_MOCK) {
-        return mockProducts.update(id, data)
-      }
       const response = await apiClient.patch<Product>(`/products/${id}`, data)
       return response.data
     } catch (error: any) {
@@ -92,10 +76,6 @@ export const deleteProduct = createAsyncThunk(
   'products/delete',
   async (id: string, { rejectWithValue }) => {
     try {
-      if (USE_MOCK) {
-        mockProducts.delete(id)
-        return id
-      }
       await apiClient.delete(`/products/${id}`)
       return id
     } catch (error: any) {

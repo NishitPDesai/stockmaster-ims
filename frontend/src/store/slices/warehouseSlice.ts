@@ -1,7 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import { Warehouse, Location, CreateWarehouseDto, CreateLocationDto } from '@/types'
-import { apiClient, USE_MOCK } from '@/lib/api'
-import { mockWarehouses } from '@/mocks/warehouses'
+import { apiClient } from '@/lib/api'
 
 interface WarehouseState {
   warehouses: Warehouse[]
@@ -24,9 +23,6 @@ export const fetchWarehouses = createAsyncThunk(
   'warehouses/fetchAll',
   async (_, { rejectWithValue }) => {
     try {
-      if (USE_MOCK) {
-        return mockWarehouses.getAll()
-      }
       const response = await apiClient.get<Warehouse[]>('/warehouses')
       return response.data
     } catch (error: any) {
@@ -39,9 +35,6 @@ export const createWarehouse = createAsyncThunk(
   'warehouses/create',
   async (data: CreateWarehouseDto, { rejectWithValue }) => {
     try {
-      if (USE_MOCK) {
-        return mockWarehouses.create(data)
-      }
       const response = await apiClient.post<Warehouse>('/warehouses', data)
       return response.data
     } catch (error: any) {
@@ -54,9 +47,6 @@ export const updateWarehouse = createAsyncThunk(
   'warehouses/update',
   async ({ id, data }: { id: string; data: Partial<CreateWarehouseDto> }, { rejectWithValue }) => {
     try {
-      if (USE_MOCK) {
-        return mockWarehouses.update(id, data)
-      }
       const response = await apiClient.patch<Warehouse>(`/warehouses/${id}`, data)
       return response.data
     } catch (error: any) {
@@ -69,10 +59,6 @@ export const deleteWarehouse = createAsyncThunk(
   'warehouses/delete',
   async (id: string, { rejectWithValue }) => {
     try {
-      if (USE_MOCK) {
-        mockWarehouses.delete(id)
-        return id
-      }
       await apiClient.delete(`/warehouses/${id}`)
       return id
     } catch (error: any) {
@@ -86,9 +72,6 @@ export const fetchLocations = createAsyncThunk(
   'locations/fetchAll',
   async (warehouseId: string | undefined, { rejectWithValue }) => {
     try {
-      if (USE_MOCK) {
-        return mockWarehouses.getLocations(warehouseId)
-      }
       const response = await apiClient.get<Location[]>('/locations', {
         params: warehouseId ? { warehouseId } : {},
       })
@@ -103,9 +86,6 @@ export const createLocation = createAsyncThunk(
   'locations/create',
   async (data: CreateLocationDto, { rejectWithValue }) => {
     try {
-      if (USE_MOCK) {
-        return mockWarehouses.createLocation(data)
-      }
       const response = await apiClient.post<Location>('/locations', data)
       return response.data
     } catch (error: any) {
@@ -118,9 +98,6 @@ export const updateLocation = createAsyncThunk(
   'locations/update',
   async ({ id, data }: { id: string; data: Partial<CreateLocationDto> }, { rejectWithValue }) => {
     try {
-      if (USE_MOCK) {
-        return mockWarehouses.updateLocation(id, data)
-      }
       const response = await apiClient.patch<Location>(`/locations/${id}`, data)
       return response.data
     } catch (error: any) {
@@ -133,10 +110,6 @@ export const deleteLocation = createAsyncThunk(
   'locations/delete',
   async (id: string, { rejectWithValue }) => {
     try {
-      if (USE_MOCK) {
-        mockWarehouses.deleteLocation(id)
-        return id
-      }
       await apiClient.delete(`/locations/${id}`)
       return id
     } catch (error: any) {

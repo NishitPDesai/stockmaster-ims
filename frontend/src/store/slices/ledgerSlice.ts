@@ -1,7 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import { MoveLog, LedgerFilters } from '@/types'
-import { apiClient, USE_MOCK } from '@/lib/api'
-import { mockLedger } from '@/mocks/ledger'
+import { apiClient } from '@/lib/api'
 
 interface LedgerState {
   items: MoveLog[]
@@ -21,9 +20,6 @@ export const fetchLedger = createAsyncThunk(
   'ledger/fetchAll',
   async (filters: LedgerFilters | undefined, { rejectWithValue }) => {
     try {
-      if (USE_MOCK) {
-        return mockLedger.getAll(filters)
-      }
       const response = await apiClient.get<MoveLog[]>('/ledger', { params: filters })
       return response.data
     } catch (error: any) {

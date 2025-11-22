@@ -122,7 +122,7 @@ export function OperationDetails({
               <label className="text-sm font-medium text-muted-foreground">
                 Created
               </label>
-              <p className="text-sm">{formatDateTime(operation.createdAt)}</p>
+              <p className="text-sm">{formatDateTime(operation.createdAt) || '-'}</p>
             </div>
           </div>
 
@@ -250,7 +250,7 @@ export function OperationDetails({
                   Validated At
                 </label>
                 <p className="text-sm">
-                  {formatDateTime(operation.validatedAt)}
+                  {formatDateTime(operation.validatedAt) || '-'}
                 </p>
               </div>
               <div>
@@ -271,6 +271,7 @@ export function OperationDetails({
                   variant={action.variant}
                   onClick={() => {
                     if (onStatusChange) {
+                      // onStatusChange will handle documentType internally
                       onStatusChange(operation.id, action.status);
                     }
                   }}

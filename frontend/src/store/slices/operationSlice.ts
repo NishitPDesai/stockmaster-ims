@@ -4,9 +4,9 @@ import {
   CreateOperationDto,
   UpdateOperationDto,
   OperationFilters,
+  OperationStatus,
 } from "@/types";
-import { apiClient, USE_MOCK } from "@/lib/api";
-import { mockOperations } from "@/mocks/operations";
+import { apiClient } from "@/lib/api";
 
 interface OperationState {
   items: Operation[];
@@ -28,9 +28,7 @@ export const fetchOperations = createAsyncThunk(
   "operations/fetchAll",
   async (filters: OperationFilters | undefined, { rejectWithValue }) => {
     try {
-      if (USE_MOCK) {
-        return mockOperations.getAll(filters);
-      }
+      // Backend endpoint: /api/operations (returns all operations)
       const response = await apiClient.get<Operation[]>("/operations", {
         params: filters,
       });
@@ -45,12 +43,22 @@ export const fetchOperations = createAsyncThunk(
 
 export const fetchOperationById = createAsyncThunk(
   "operations/fetchById",
-  async (id: string, { rejectWithValue }) => {
+  async (
+    { id, documentType }: { id: string; documentType: string },
+    { rejectWithValue }
+  ) => {
     try {
-      if (USE_MOCK) {
-        return mockOperations.getById(id);
+      // Determine the correct endpoint based on document type
+      let endpoint = `/operations/receipts/${id}`;
+      if (documentType === "DELIVERY") {
+        endpoint = `/operations/deliveries/${id}`;
+      } else if (documentType === "TRANSFER") {
+        endpoint = `/operations/transfers/${id}`;
+      } else if (documentType === "ADJUSTMENT") {
+        endpoint = `/operations/adjustments/${id}`;
       }
-      const response = await apiClient.get<Operation>(`/operations/${id}`);
+
+      const response = await apiClient.get<Operation>(endpoint);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(
@@ -64,10 +72,6 @@ export const createOperation = createAsyncThunk(
   "operations/create",
   async (data: CreateOperationDto, { rejectWithValue }) => {
     try {
-      if (USE_MOCK) {
-        return mockOperations.create(data);
-      }
-
       // Determine the correct endpoint based on document type
       let endpoint = "/operations/receipts";
       if (data.documentType === "DELIVERY") {
@@ -78,7 +82,23 @@ export const createOperation = createAsyncThunk(
         endpoint = "/operations/adjustments";
       }
 
-      const response = await apiClient.post<Operation>(endpoint, data);
+      // Transform data to match backend format (lines instead of lineItems)
+      const backendData = {
+        ...data,
+        lines: data.lineItems.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          uom: item.uom,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice,
+          // Receipt-specific fields
+          locationId: data.warehouseId ? undefined : undefined, // Will be set per line
+          orderedQty: item.quantity,
+          receivedQty: item.quantity,
+        })),
+      };
+
+      const response = await apiClient.post<Operation>(endpoint, backendData);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(
@@ -99,10 +119,6 @@ export const updateOperation = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      if (USE_MOCK) {
-        return mockOperations.update(id, data);
-      }
-
       // Determine the correct endpoint based on document type
       let endpoint = `/operations/receipts/${id}`;
       if (documentType === "DELIVERY") {
@@ -113,7 +129,20 @@ export const updateOperation = createAsyncThunk(
         endpoint = `/operations/adjustments/${id}`;
       }
 
-      const response = await apiClient.patch<Operation>(endpoint, data);
+      // Transform data to match backend format
+      const backendData: any = { ...data };
+      if (data.lineItems) {
+        backendData.lines = data.lineItems.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          uom: item.uom,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice,
+        }));
+        delete backendData.lineItems;
+      }
+
+      const response = await apiClient.patch<Operation>(endpoint, backendData);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(
@@ -126,17 +155,34 @@ export const updateOperation = createAsyncThunk(
 export const changeOperationStatus = createAsyncThunk(
   "operations/changeStatus",
   async (
-    { id, status }: { id: string; status: OperationStatus },
+    {
+      id,
+      status,
+      documentType,
+    }: { id: string; status: OperationStatus; documentType: string },
     { rejectWithValue }
   ) => {
     try {
-      if (USE_MOCK) {
-        return mockOperations.update(id, { status });
+      // Determine the correct endpoint based on document type
+      let endpoint = `/operations/receipts/${id}`;
+      if (documentType === "DELIVERY") {
+        endpoint = `/operations/deliveries/${id}`;
+      } else if (documentType === "TRANSFER") {
+        endpoint = `/operations/transfers/${id}`;
+      } else if (documentType === "ADJUSTMENT") {
+        endpoint = `/operations/adjustments/${id}`;
       }
-      const response = await apiClient.patch<Operation>(`/operations/${id}`, {
-        status,
-      });
-      return response.data;
+
+      // For status changes, backend uses validate endpoint for READY->DONE
+      if (status === "DONE") {
+        const validateEndpoint = `${endpoint}/validate`;
+        const response = await apiClient.post<Operation>(validateEndpoint);
+        return response.data;
+      } else {
+        // For other status changes, use PATCH
+        const response = await apiClient.patch<Operation>(endpoint, { status });
+        return response.data;
+      }
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.message || "Failed to change operation status"
