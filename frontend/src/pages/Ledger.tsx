@@ -27,12 +27,12 @@ export function Ledger() {
     {
       key: 'documentNumber',
       header: 'Document #',
-      cell: (row) => <span className="font-mono">{row.documentNumber}</span>,
+      cell: (row) => <span className="font-mono">{row.reference}</span>,
     },
     {
       key: 'documentType',
       header: 'Type',
-      cell: (row) => DocumentTypeLabels[row.documentType],
+      cell: (row) => DocumentTypeLabels[row.moveType],
     },
     {
       key: 'product',
@@ -47,7 +47,7 @@ export function Ledger() {
     {
       key: 'warehouse',
       header: 'Warehouse',
-      cell: (row) => row.warehouseName,
+      cell: (row) => row.fromWarehouseName,
     },
     {
       key: 'movement',

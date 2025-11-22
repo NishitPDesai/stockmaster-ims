@@ -2,14 +2,14 @@ import { DocumentType, OperationStatus } from './Status'
 
 export interface MoveLog {
   id: string
-  documentType: DocumentType
-  documentId: string
+  moveType: DocumentType
+  reference: string
   documentNumber: string
   productId: string
   productName: string
   productSku: string
   warehouseId: string
-  warehouseName: string
+  fromWarehouseName: string
   locationId?: string
   locationName?: string
   quantity: number
