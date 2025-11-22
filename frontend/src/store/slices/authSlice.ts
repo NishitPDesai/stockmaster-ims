@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import { User, LoginCredentials, RegisterCredentials, AuthResponse } from '@/types'
 import { apiClient, USE_MOCK } from '@/lib/api'
-import { setStoredUser, clearStoredAuth, setAuthToken, setRefreshToken } from '@/lib/auth'
+import { setStoredUser, clearStoredAuth, setAuthToken, setRefreshToken, getStoredUser, getAuthToken } from '@/lib/auth'
 import { mockAuth } from '@/mocks/auth'
 
 interface AuthState {
@@ -12,10 +12,14 @@ interface AuthState {
   error: string | null;
 }
 
+// Initialize state from localStorage for persistence
+const storedUser = getStoredUser()
+const storedToken = getAuthToken()
+
 const initialState: AuthState = {
-  user: null,
-  token: null,
-  isAuthenticated: false,
+  user: storedUser,
+  token: storedToken,
+  isAuthenticated: !!(storedUser && storedToken),
   isLoading: false,
   error: null,
 };
@@ -92,6 +96,15 @@ export const restoreAuth = createAsyncThunk(
   "auth/restore",
   async (_, { rejectWithValue }) => {
     try {
+      // Get stored token and user from localStorage
+      const storedToken = getAuthToken();
+      const storedUser = getStoredUser();
+      
+      if (!storedToken || !storedUser) {
+        clearStoredAuth();
+        return rejectWithValue("No stored authentication found");
+      }
+
       if (USE_MOCK) {
         const response = await mockAuth.refresh();
         return response;
@@ -105,7 +118,8 @@ export const restoreAuth = createAsyncThunk(
 
       setStoredUser(user);
 
-      return { user, token: null, refreshToken: null };
+      // Return the stored token since it's still valid
+      return { user, token: storedToken, refreshToken: null };
     } catch (error: any) {
       clearStoredAuth();
       return rejectWithValue(
@@ -178,11 +192,14 @@ const authSlice = createSlice({
       .addCase(restoreAuth.fulfilled, (state, action) => {
         state.isLoading = false;
         state.user = action.payload.user;
+        state.token = action.payload.token;
         state.isAuthenticated = true;
+        state.error = null;
       })
       .addCase(restoreAuth.rejected, (state) => {
         state.isLoading = false;
         state.user = null;
+        state.token = null;
         state.isAuthenticated = false;
       });
   },
