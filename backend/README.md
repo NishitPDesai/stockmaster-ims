@@ -56,7 +56,18 @@ backend/
    JWT_SECRET=your_secure_random_secret_here
    COOKIE_NAME=sm_auth
    OTP_EXPIRES_MIN=15
+   
+   # Email Configuration (for password reset) - Only these two are required
+   SMTP_USER=your-email@gmail.com
+   SMTP_PASSWORD=your-app-password
    ```
+   
+   **Note**: The system will auto-detect SMTP settings based on your email domain:
+   - Gmail: `smtp.gmail.com:587`
+   - Outlook/Hotmail: `smtp-mail.outlook.com:587`
+   - Yahoo: `smtp.mail.yahoo.com:587`
+   
+   For Gmail, you'll need to use an App Password instead of your regular password. Enable 2-factor authentication and generate an app password in your Google Account settings.
 
 3. **Run Prisma migrations**:
 
@@ -78,9 +89,14 @@ backend/
 ### Authentication
 
 - `POST /api/auth/signup` - Register a new user
+- `POST /api/auth/register` - Register a new user (alternative endpoint)
 - `POST /api/auth/login` - Login (sets JWT cookie)
 - `POST /api/auth/logout` - Logout (clears cookie)
 - `GET /api/auth/me` - Get current user
+- `POST /api/auth/password-reset/request` - Request password reset (sends OTP via email)
+  - Body: `{ "email": "user@example.com" }`
+- `POST /api/auth/password-reset/reset` - Reset password with OTP
+  - Body: `{ "email": "user@example.com", "otp": "123456", "newPassword": "newSecurePassword" }`
 
 ### Products
 
@@ -202,13 +218,18 @@ All stock operations use database transactions to ensure consistency.
 
 ## Environment Variables
 
-| Variable          | Description                    | Default   |
-| ----------------- | ------------------------------ | --------- |
-| `DATABASE_URL`    | PostgreSQL connection string   | -         |
-| `PORT`            | Server port                    | `5000`    |
-| `JWT_SECRET`      | Secret key for JWT signing     | -         |
-| `COOKIE_NAME`     | Name of auth cookie            | `sm_auth` |
-| `OTP_EXPIRES_MIN` | OTP expiration time in minutes | `15`      |
+| Variable          | Description                    | Default           |
+| ----------------- | ------------------------------ | ----------------- |
+| `DATABASE_URL`    | PostgreSQL connection string   | -                 |
+| `PORT`            | Server port                    | `5000`            |
+| `JWT_SECRET`      | Secret key for JWT signing     | -                 |
+| `COOKIE_NAME`     | Name of auth cookie            | `sm_auth`         |
+| `OTP_EXPIRES_MIN` | OTP expiration time in minutes | `15`              |
+| `SMTP_USER`       | SMTP email address (required)  | -                 |
+| `SMTP_PASSWORD`    | SMTP password/app password (required) | -                 |
+| `SMTP_HOST`       | SMTP server hostname (optional, auto-detected) | Auto-detected from email domain |
+| `SMTP_PORT`       | SMTP server port (optional)    | `587`             |
+| `SMTP_SECURE`     | Use SSL (optional, true for 465) | `false`           |
 
 ## Authentication Flow
 
